@@ -93,6 +93,7 @@ export interface InterviewSession {
 
 // Interview Text Mode Types
 export type TextQuestionType = 'Behavioral' | 'Technical' | 'Situational';
+export type ExperienceLevel = 'Entry' | 'Mid' | 'Senior';
 
 export interface TextQuestion {
   id: string;
@@ -104,6 +105,8 @@ export interface TextQuestion {
 export interface TextInterviewConfig {
   types: TextQuestionType[];
   questionCount: number;
+  experienceLevel: ExperienceLevel;
+  customTopics: string[];
 }
 
 export interface TextInterviewSession {
