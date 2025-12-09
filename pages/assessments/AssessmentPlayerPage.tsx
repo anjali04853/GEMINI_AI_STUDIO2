@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Save, Clock, AlertCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Save, Clock, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useAssessmentStore } from '../../store/assessmentStore';
 import { QuestionRenderer } from '../../components/assessment/QuestionRenderer';
 import { ProgressBar } from '../../components/assessment/ProgressBar';
@@ -20,12 +20,10 @@ export const AssessmentPlayerPage = () => {
     finishAssessment 
   } = useAssessmentStore();
 
-  // Redirect if no active assessment
   if (!activeAssessment) {
     return <Navigate to="/assessments" replace />;
   }
 
-  // Redirect if already finished
   if (isFinished) {
     return <Navigate to={`/assessments/${activeAssessment.id}/results`} replace />;
   }
@@ -45,20 +43,24 @@ export const AssessmentPlayerPage = () => {
   };
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-8 pb-10">
       {/* Header with Progress */}
-      <div className="space-y-4">
+      <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <button 
+          <Button 
+            variant="ghost" 
             onClick={() => navigate('/assessments')} 
-            className="text-sm text-slate-500 hover:text-slate-900 flex items-center"
+            className="pl-0 hover:bg-transparent hover:text-brand-purple"
           >
-            <ChevronLeft className="h-4 w-4 mr-1" />
+            <ChevronLeft className="h-5 w-5 mr-1" />
             Exit Assessment
-          </button>
-          <div className="flex items-center text-sm font-medium text-slate-600 bg-slate-100 px-3 py-1 rounded-full">
-            <Clock className="h-4 w-4 mr-2" />
-            Time Remaining: 14:22
+          </Button>
+          
+          <div className="flex items-center space-x-2">
+            <div className="flex items-center text-sm font-bold text-brand-purple bg-brand-lavender px-4 py-1.5 rounded-full shadow-sm border border-brand-purple/10">
+                <Clock className="h-4 w-4 mr-2" />
+                14:22
+            </div>
           </div>
         </div>
         
@@ -69,21 +71,24 @@ export const AssessmentPlayerPage = () => {
       </div>
 
       {/* Main Question Card */}
-      <Card className="min-h-[400px] flex flex-col">
-        <CardHeader className="border-b border-slate-100 bg-slate-50/50">
-          <div className="flex justify-between items-start">
-            <div>
-              <span className="text-sm font-semibold text-blue-600 uppercase tracking-wider">
-                Question {currentQuestionIndex + 1}
-              </span>
-              <h2 className="text-xl font-bold mt-1 text-slate-900">
-                {currentQuestion.text}
-              </h2>
-            </div>
+      <Card className="min-h-[500px] flex flex-col rounded-[24px] shadow-xl border-slate-100 overflow-hidden">
+        <CardHeader className="border-b border-slate-100 bg-white pt-8 pb-6 px-8 relative">
+          <div className="absolute top-8 right-8">
+             <span className="flex items-center justify-center w-8 h-8 rounded-full bg-brand-pink text-white font-bold text-sm shadow-md">
+                {currentQuestionIndex + 1}
+             </span>
+          </div>
+          <div>
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 block">
+               Question {currentQuestionIndex + 1} of {activeAssessment.questions.length}
+            </span>
+            <h2 className="text-2xl md:text-3xl font-bold text-slate-900 leading-tight pr-12">
+              {currentQuestion.text}
+            </h2>
           </div>
         </CardHeader>
         
-        <CardContent className="flex-1 py-8">
+        <CardContent className="flex-1 py-8 px-8 bg-white">
           <QuestionRenderer 
             question={currentQuestion}
             value={currentAnswer}
@@ -91,11 +96,12 @@ export const AssessmentPlayerPage = () => {
           />
         </CardContent>
 
-        <CardFooter className="flex justify-between border-t border-slate-100 py-4 bg-slate-50/50">
+        <CardFooter className="flex justify-between items-center py-6 px-8 bg-slate-50 border-t border-slate-100">
           <Button 
-            variant="outline" 
+            variant="secondary" 
             onClick={prevQuestion} 
             disabled={isFirstQuestion}
+            className="border-slate-300 text-slate-600 hover:bg-white hover:text-brand-purple hover:border-brand-purple/30"
           >
             Previous
           </Button>
@@ -103,26 +109,29 @@ export const AssessmentPlayerPage = () => {
           <Button 
             onClick={handleNext}
             disabled={currentQuestion.required && !currentAnswer}
-            className={isLastQuestion ? "bg-green-600 hover:bg-green-700" : ""}
+            className={isLastQuestion 
+                ? "bg-gradient-to-r from-brand-turquoise to-teal-400 hover:from-brand-turquoise hover:to-teal-500 text-white shadow-lg shadow-brand-turquoise/25 hover:shadow-brand-turquoise/40 px-8" 
+                : "bg-gradient-to-r from-brand-purple to-brand-darkPurple hover:from-brand-purple hover:to-indigo-600 text-white shadow-lg shadow-brand-purple/25 hover:shadow-brand-purple/40 px-8"
+            }
           >
             {isLastQuestion ? (
               <>
-                Finish Assessment
-                <Save className="ml-2 h-4 w-4" />
+                Submit Assessment
+                <CheckCircle2 className="ml-2 h-5 w-5" />
               </>
             ) : (
               <>
                 Next Question
-                <ChevronRight className="ml-2 h-4 w-4" />
+                <ChevronRight className="ml-2 h-5 w-5" />
               </>
             )}
           </Button>
         </CardFooter>
       </Card>
 
-      <div className="flex items-center justify-center space-x-2 text-xs text-slate-400">
-        <AlertCircle className="h-3 w-3" />
-        <span>Answers are auto-saved locally.</span>
+      <div className="flex items-center justify-center space-x-2 text-xs font-medium text-slate-400">
+        <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
+        <span>Progress auto-saved</span>
       </div>
     </div>
   );
