@@ -1,18 +1,19 @@
+
 import React from 'react';
 import { cn } from '../../lib/utils';
-import { Star } from 'lucide-react';
+import { Star, ChevronUp, ChevronDown, GripVertical, Check } from 'lucide-react';
 
 interface BaseQuestionProps {
-  value: string | number | undefined;
-  onChange: (value: string | number) => void;
+  value: string | number | string[] | undefined;
+  onChange: (value: string | number | string[]) => void;
 }
 
 // --- Multiple Choice Component ---
-interface MultipleChoiceProps extends BaseQuestionProps {
+interface OptionsProps extends BaseQuestionProps {
   options: string[];
 }
 
-export const MultipleChoiceQuestion: React.FC<MultipleChoiceProps> = ({ options, value, onChange }) => {
+export const MultipleChoiceQuestion: React.FC<OptionsProps> = ({ options, value, onChange }) => {
   return (
     <div className="space-y-3">
       {options.map((option, index) => (
@@ -22,8 +23,8 @@ export const MultipleChoiceQuestion: React.FC<MultipleChoiceProps> = ({ options,
           className={cn(
             "group relative p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 flex items-center",
             value === option
-              ? "border-brand-purple bg-brand-lavender/40 shadow-sm ring-1 ring-brand-purple/20" // Selected: Purple border + Lavender BG
-              : "border-slate-100 bg-white hover:border-brand-purple/30 hover:bg-brand-lavender/10" // Default + Hover
+              ? "border-brand-purple bg-brand-lavender/40 shadow-sm ring-1 ring-brand-purple/20"
+              : "border-slate-100 bg-white hover:border-brand-purple/30 hover:bg-brand-lavender/10"
           )}
           style={{ borderWidth: value === option ? '3px' : '2px' }}
         >
@@ -49,16 +50,18 @@ export const MultipleChoiceQuestion: React.FC<MultipleChoiceProps> = ({ options,
 
 // --- Text Input Component ---
 export const TextQuestion: React.FC<BaseQuestionProps> = ({ value, onChange }) => {
+  const textValue = typeof value === 'string' ? value : '';
+  
   return (
     <div className="space-y-2">
       <textarea
         className="flex min-h-[160px] w-full rounded-xl border-2 border-slate-200 bg-brand-offWhite px-4 py-3 text-base text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-brand-purple focus:ring-4 focus:ring-brand-purple/10 disabled:cursor-not-allowed disabled:opacity-50 transition-all resize-none"
         placeholder="Type your detailed answer here..."
-        value={value?.toString() || ''}
+        value={textValue}
         onChange={(e) => onChange(e.target.value)}
       />
       <div className="text-right text-xs text-slate-400 font-medium">
-         {(value?.toString() || '').length} characters
+         {textValue.length} characters
       </div>
     </div>
   );
@@ -94,6 +97,80 @@ export const RatingQuestion: React.FC<BaseQuestionProps> = ({ value, onChange })
         <span>Not Confident</span>
         <span>Very Confident</span>
       </div>
+    </div>
+  );
+};
+
+// --- Select / Dropdown Component ---
+export const SelectQuestion: React.FC<OptionsProps> = ({ options, value, onChange }) => {
+  return (
+    <div className="relative">
+        <select 
+            value={value as string || ''} 
+            onChange={(e) => onChange(e.target.value)}
+            className="w-full h-14 pl-4 pr-10 rounded-xl border-2 border-slate-200 bg-white text-slate-800 text-lg focus:outline-none focus:border-brand-purple focus:ring-4 focus:ring-brand-purple/10 appearance-none cursor-pointer transition-all"
+        >
+            <option value="" disabled>Select an option...</option>
+            {options.map((opt, i) => (
+                <option key={i} value={opt}>{opt}</option>
+            ))}
+        </select>
+        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+            <ChevronDown className="h-5 w-5 text-slate-400" />
+        </div>
+    </div>
+  );
+};
+
+// --- Ranking / Ordering Component ---
+export const RankingQuestion: React.FC<OptionsProps> = ({ options, value, onChange }) => {
+  // If no value set yet, initialize with default order
+  const currentOrder = (value as string[]) || options;
+
+  const moveItem = (index: number, direction: 'up' | 'down') => {
+    const newOrder = [...currentOrder];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    
+    if (targetIndex >= 0 && targetIndex < newOrder.length) {
+      [newOrder[index], newOrder[targetIndex]] = [newOrder[targetIndex], newOrder[index]];
+      onChange(newOrder);
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+        <div className="text-xs text-slate-400 font-medium uppercase tracking-wider mb-2">
+            Reorder the items (Top = Highest Priority)
+        </div>
+        {currentOrder.map((item, index) => (
+            <div 
+                key={item} 
+                className="flex items-center gap-3 p-3 bg-white rounded-lg border-l-4 border-l-brand-sky border-y border-r border-slate-200 shadow-sm transition-all hover:shadow-md"
+            >
+                <div className="text-slate-300 cursor-move">
+                    <GripVertical className="h-5 w-5" />
+                </div>
+                <div className="flex-1 font-medium text-slate-700">
+                    {item}
+                </div>
+                <div className="flex flex-col gap-1">
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); moveItem(index, 'up'); }}
+                        disabled={index === 0}
+                        className="p-1 text-slate-400 hover:text-brand-purple hover:bg-brand-lavender rounded disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+                    >
+                        <ChevronUp className="h-4 w-4" />
+                    </button>
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); moveItem(index, 'down'); }}
+                        disabled={index === currentOrder.length - 1}
+                        className="p-1 text-slate-400 hover:text-brand-purple hover:bg-brand-lavender rounded disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+                    >
+                        <ChevronDown className="h-4 w-4" />
+                    </button>
+                </div>
+            </div>
+        ))}
     </div>
   );
 };

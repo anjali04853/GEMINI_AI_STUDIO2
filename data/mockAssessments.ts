@@ -1,3 +1,4 @@
+
 import { Assessment } from '../types';
 
 export const mockAssessments: Assessment[] = [
@@ -13,6 +14,7 @@ export const mockAssessments: Assessment[] = [
         id: 'q1',
         type: 'multiple-choice',
         text: 'What is the primary purpose of useEffect in React?',
+        required: true,
         options: [
           'To manage global state',
           'To perform side effects in functional components',
@@ -24,17 +26,39 @@ export const mockAssessments: Assessment[] = [
         id: 'q2',
         type: 'multiple-choice',
         text: 'Which CSS utility class in Tailwind sets the background color to blue-500?',
+        required: true,
         options: ['color-blue-500', 'bg-blue-500', 'text-blue-500', 'background-blue-500']
       },
       {
         id: 'q3',
         type: 'text',
         text: 'Briefly explain the difference between interface and type in TypeScript.',
+        required: true,
       },
       {
         id: 'q4',
         type: 'rating',
         text: 'How confident are you in writing unit tests with Jest?',
+        required: true,
+      },
+      {
+        id: 'q5',
+        type: 'ranking',
+        text: 'Order the following React lifecycle phases from first to last.',
+        required: true,
+        options: [
+            'Mounting',
+            'Updating',
+            'Unmounting',
+            'Error Handling'
+        ]
+      },
+      {
+        id: 'q6',
+        type: 'select',
+        text: 'Select your preferred state management library.',
+        required: true,
+        options: ['Redux', 'Zustand', 'Context API', 'Recoil', 'MobX']
       }
     ]
   },
@@ -50,6 +74,7 @@ export const mockAssessments: Assessment[] = [
         id: 'sq1',
         type: 'multiple-choice',
         text: 'A team member is consistently missing deadlines. What is your first step?',
+        required: true,
         options: [
           'Report them to management',
           'Ignore it to avoid conflict',
@@ -61,11 +86,13 @@ export const mockAssessments: Assessment[] = [
         id: 'sq2',
         type: 'rating',
         text: 'Rate your ability to explain complex technical concepts to non-technical stakeholders.',
+        required: true,
       },
       {
         id: 'sq3',
         type: 'text',
         text: 'Describe a situation where you had to disagree with a decision made by your supervisor.',
+        required: true,
       }
     ]
   }

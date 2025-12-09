@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { Assessment, AssessmentResult, UserResponse } from '../types';
@@ -10,18 +11,21 @@ interface AssessmentState {
   // Active State
   activeAssessment: Assessment | null;
   currentQuestionIndex: number;
-  responses: Record<string, string | number>; // questionId -> answer
+  responses: Record<string, string | number | string[]>; // questionId -> answer
+  flaggedQuestions: string[];
   isFinished: boolean;
   
   startAssessment: (assessment: Assessment) => void;
-  submitAnswer: (questionId: string, answer: string | number) => void;
+  submitAnswer: (questionId: string, answer: string | number | string[]) => void;
+  toggleFlag: (questionId: string) => void;
   nextQuestion: () => void;
   prevQuestion: () => void;
   finishAssessment: () => void;
   resetAssessment: () => void;
   
-  // Computed helpers could be done via selectors, but methods work for simplicity
+  // Computed helpers
   getProgress: () => number;
+  isFlagged: (questionId: string) => boolean;
 }
 
 export const useAssessmentStore = create<AssessmentState>()(
@@ -31,12 +35,14 @@ export const useAssessmentStore = create<AssessmentState>()(
       activeAssessment: null,
       currentQuestionIndex: 0,
       responses: {},
+      flaggedQuestions: [],
       isFinished: false,
 
       startAssessment: (assessment) => set({
         activeAssessment: assessment,
         currentQuestionIndex: 0,
         responses: {},
+        flaggedQuestions: [],
         isFinished: false
       }),
 
@@ -44,8 +50,29 @@ export const useAssessmentStore = create<AssessmentState>()(
         responses: { ...state.responses, [questionId]: answer }
       })),
 
+      toggleFlag: (questionId) => set((state) => ({
+        flaggedQuestions: state.flaggedQuestions.includes(questionId)
+          ? state.flaggedQuestions.filter(id => id !== questionId)
+          : [...state.flaggedQuestions, questionId]
+      })),
+
       nextQuestion: () => set((state) => {
         if (!state.activeAssessment) return state;
+        
+        // Validation: Check if current question is required and answered
+        const currentQuestion = state.activeAssessment.questions[state.currentQuestionIndex];
+        const currentAnswer = state.responses[currentQuestion.id];
+        
+        // Check if answer is present (allow 0 as valid number, but not empty string, undefined, or empty array)
+        let isAnswered = currentAnswer !== undefined && currentAnswer !== '' && currentAnswer !== null;
+        if (Array.isArray(currentAnswer) && currentAnswer.length === 0) {
+            isAnswered = false;
+        }
+        
+        if (currentQuestion.required && !isAnswered) {
+            return state; // Prevent moving to next question if required and unanswered
+        }
+
         const nextIndex = state.currentQuestionIndex + 1;
         if (nextIndex >= state.activeAssessment.questions.length) {
           return state; // Can't go past last question
@@ -60,14 +87,26 @@ export const useAssessmentStore = create<AssessmentState>()(
       finishAssessment: () => {
         const state = get();
         if (state.activeAssessment && !state.isFinished) {
+          
+          // Validation: Ensure all required questions are answered before finishing
+          const hasUnansweredRequired = state.activeAssessment.questions.some(q => {
+             const ans = state.responses[q.id];
+             const isEmpty = ans === undefined || ans === '' || ans === null || (Array.isArray(ans) && ans.length === 0);
+             return q.required && isEmpty;
+          });
+
+          if (hasUnansweredRequired) {
+             // Block finish if validation fails
+             return;
+          }
+
           // Convert record to array for AssessmentResult
           const responseArray: UserResponse[] = Object.entries(state.responses).map(([qId, ans]) => ({
             questionId: qId,
-            answer: ans as string | number
+            answer: ans as string | number | string[]
           }));
           
           // Calculate mock score for analytics (in real app, compare with correct answers)
-          // For now, we assume 85% for demo purposes if not strictly calculable
           const mockScore = 85; 
 
           const result: AssessmentResult = {
@@ -90,6 +129,7 @@ export const useAssessmentStore = create<AssessmentState>()(
         activeAssessment: null,
         currentQuestionIndex: 0,
         responses: {},
+        flaggedQuestions: [],
         isFinished: false
       }),
 
@@ -98,6 +138,10 @@ export const useAssessmentStore = create<AssessmentState>()(
         if (!state.activeAssessment) return 0;
         const answeredCount = Object.keys(state.responses).length;
         return (answeredCount / state.activeAssessment.questions.length) * 100;
+      },
+
+      isFlagged: (questionId) => {
+          return get().flaggedQuestions.includes(questionId);
       }
     }),
     {

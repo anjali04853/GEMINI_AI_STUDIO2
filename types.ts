@@ -25,14 +25,14 @@ export interface ChatMessage {
 }
 
 // Assessment Types
-export type QuestionType = 'multiple-choice' | 'text' | 'rating';
+export type QuestionType = 'multiple-choice' | 'text' | 'rating' | 'ranking' | 'select';
 
 export interface Question {
   id: string;
   type: QuestionType;
   text: string;
-  options?: string[]; // For multiple choice
-  correctAnswer?: string | number; // For scoring (optional)
+  options?: string[]; // For multiple choice and ranking (initial order)
+  correctAnswer?: string | number | string[]; // For scoring (optional)
   required?: boolean;
   category?: string; // Added for admin filtering
 }
@@ -49,7 +49,7 @@ export interface Assessment {
 
 export interface UserResponse {
   questionId: string;
-  answer: string | number;
+  answer: string | number | string[];
 }
 
 export interface AssessmentResult {
