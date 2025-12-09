@@ -1,15 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
-import { GoogleGenAI, LiveServerMessage, Modality, Blob } from '@google/genai';
-import { Mic, MicOff, PhoneOff, User, Bot, Volume2 } from 'lucide-react';
+import { GoogleGenAI, LiveServerMessage, Modality, type Blob as GenAIBlob } from '@google/genai';
+import { Mic, MicOff, PhoneOff, User, Bot, Volume2, MoreHorizontal, LogOut, PauseCircle, PlayCircle, StopCircle, Radio } from 'lucide-react';
 import { useVoiceBotStore } from '../../../store/voiceBotStore';
 import { Button } from '../../../components/ui/Button';
-import { Card, CardContent, CardFooter } from '../../../components/ui/Card';
 import { cn, generateId } from '../../../lib/utils';
 import { BotTranscriptItem } from '../../../types';
+import { Badge } from '../../../components/ui/Badge';
 
-// Helper types for Blob creation
-function createBlob(data: Float32Array): Blob {
+// --- Audio Helper Functions (Inline for portability) ---
+function createBlob(data: Float32Array): GenAIBlob {
   const l = data.length;
   const int16 = new Int16Array(l);
   for (let i = 0; i < l; i++) {
@@ -40,16 +40,10 @@ function decode(base64: string) {
   return bytes;
 }
 
-async function decodeAudioData(
-  data: Uint8Array,
-  ctx: AudioContext,
-  sampleRate: number,
-  numChannels: number,
-): Promise<AudioBuffer> {
+async function decodeAudioData(data: Uint8Array, ctx: AudioContext, sampleRate: number, numChannels: number): Promise<AudioBuffer> {
   const dataInt16 = new Int16Array(data.buffer);
   const frameCount = dataInt16.length / numChannels;
   const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
-
   for (let channel = 0; channel < numChannels; channel++) {
     const channelData = buffer.getChannelData(channel);
     for (let i = 0; i < frameCount; i++) {
@@ -62,6 +56,7 @@ async function decodeAudioData(
 export const BotInterviewPage = () => {
   const navigate = useNavigate();
   const { activeConfig, saveBotSession } = useVoiceBotStore();
+  const scrollRef = useRef<HTMLDivElement>(null);
   
   // Session State
   const [isConnected, setIsConnected] = useState(false);
@@ -69,8 +64,9 @@ export const BotInterviewPage = () => {
   const [transcript, setTranscript] = useState<BotTranscriptItem[]>([]);
   const [duration, setDuration] = useState(0);
   const [volumeLevel, setVolumeLevel] = useState(0);
+  const [botStatus, setBotStatus] = useState<'idle' | 'listening' | 'thinking' | 'speaking'>('idle');
 
-  // Refs for Audio Handling
+  // Audio Refs
   const audioContextRef = useRef<AudioContext | null>(null);
   const outputAudioContextRef = useRef<AudioContext | null>(null);
   const processorRef = useRef<ScriptProcessorNode | null>(null);
@@ -81,23 +77,26 @@ export const BotInterviewPage = () => {
   const outputNodeRef = useRef<GainNode | null>(null);
   const sourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
 
-  // Refs for Transcript Accumulation (to avoid re-renders)
+  // Transcript Buffer Refs
   const currentInputTransRef = useRef('');
   const currentOutputTransRef = useRef('');
 
   useEffect(() => {
-    // Start timer
+    // Auto-scroll transcript
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [transcript, currentInputTransRef.current, currentOutputTransRef.current]);
+
+  useEffect(() => {
     const interval = setInterval(() => {
       if (isConnected) setDuration(d => d + 1);
     }, 1000);
     return () => clearInterval(interval);
   }, [isConnected]);
 
-  // Cleanup on unmount
   useEffect(() => {
-    return () => {
-      disconnect();
-    };
+    return () => disconnect();
   }, []);
 
   if (!activeConfig) {
@@ -106,54 +105,46 @@ export const BotInterviewPage = () => {
 
   const initializeAudio = async () => {
     try {
-      // Input Context (16kHz required by Gemini)
       const inputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
       audioContextRef.current = inputCtx;
 
-      // Output Context (24kHz typical for Gemini output)
       const outputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
       outputAudioContextRef.current = outputCtx;
       const outputNode = outputCtx.createGain();
       outputNode.connect(outputCtx.destination);
       outputNodeRef.current = outputNode;
 
-      // Microphone
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
       
       const source = inputCtx.createMediaStreamSource(stream);
       sourceRef.current = source;
       
-      // Processor
       const processor = inputCtx.createScriptProcessor(4096, 1, 1);
       processorRef.current = processor;
       
       processor.onaudioprocess = (e) => {
         if (!isMicOn) return;
-        
         const inputData = e.inputBuffer.getChannelData(0);
         
-        // Calculate volume for visualizer
+        // Volume for visualizer
         let sum = 0;
         for(let i=0; i<inputData.length; i++) sum += inputData[i] * inputData[i];
-        setVolumeLevel(Math.sqrt(sum / inputData.length) * 100);
+        const rms = Math.sqrt(sum / inputData.length);
+        setVolumeLevel(Math.min(100, rms * 500)); // Amplify for visual
+
+        if (rms > 0.01) setBotStatus('listening');
 
         const pcmBlob = createBlob(inputData);
-        
         if (sessionRef.current) {
           sessionRef.current.then((session: any) => {
-             try {
-                session.sendRealtimeInput({ media: pcmBlob });
-             } catch (err) {
-                console.error("Error sending input", err);
-             }
+             try { session.sendRealtimeInput({ media: pcmBlob }); } catch (err) { console.error(err); }
           });
         }
       };
 
       source.connect(processor);
       processor.connect(inputCtx.destination);
-      
       return true;
     } catch (e) {
       console.error("Audio init error", e);
@@ -166,24 +157,18 @@ export const BotInterviewPage = () => {
     if (!success) return;
 
     const apiKey = process.env.API_KEY || '';
-    if (!apiKey) {
-      alert("API Key missing");
-      return;
-    }
+    if (!apiKey) { alert("API Key missing"); return; }
 
     const ai = new GoogleGenAI({ apiKey });
     
-    // Config
     const config = {
       model: 'gemini-2.5-flash-native-audio-preview-09-2025',
       config: {
         responseModalities: [Modality.AUDIO],
-        speechConfig: {
-          voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } }, // Zephyr, Puck, Charon, Kore, Fenrir
-        },
+        speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } } },
         systemInstruction: activeConfig.context || `You are a helpful interviewer conducting a ${activeConfig.topic} interview.`,
-        inputAudioTranscription: { model: "gemini-2.5-flash" }, // Request input transcription
-        outputAudioTranscription: { model: "gemini-2.5-flash" }, // Request output transcription
+        inputAudioTranscription: { model: "gemini-2.5-flash" },
+        outputAudioTranscription: { model: "gemini-2.5-flash" },
       }
     };
 
@@ -192,132 +177,72 @@ export const BotInterviewPage = () => {
         ...config,
         callbacks: {
           onopen: () => {
-            console.log("Gemini Live Connected");
             setIsConnected(true);
-            setTranscript([{ id: 'init', role: 'model', text: 'Hello! I am ready to begin the interview. Can you hear me clearly?', timestamp: Date.now() }]);
+            setTranscript([{ id: 'init', role: 'model', text: "Hello! I'm your AI interviewer. Shall we begin?", timestamp: Date.now() }]);
+            setBotStatus('speaking');
           },
           onmessage: async (message: LiveServerMessage) => {
-            // Handle Transcripts
+            // Transcript handling
             if (message.serverContent?.outputTranscription) {
-              const text = message.serverContent.outputTranscription.text;
-              currentOutputTransRef.current += text;
+              currentOutputTransRef.current += message.serverContent.outputTranscription.text;
             } else if (message.serverContent?.inputTranscription) {
-              const text = message.serverContent.inputTranscription.text;
-              currentInputTransRef.current += text;
+              currentInputTransRef.current += message.serverContent.inputTranscription.text;
             }
 
             if (message.serverContent?.turnComplete) {
-              // Finalize turns
               if (currentInputTransRef.current.trim()) {
-                 setTranscript(prev => [...prev, {
-                    id: generateId(),
-                    role: 'user',
-                    text: currentInputTransRef.current,
-                    timestamp: Date.now()
-                 }]);
+                 setTranscript(prev => [...prev, { id: generateId(), role: 'user', text: currentInputTransRef.current, timestamp: Date.now() }]);
                  currentInputTransRef.current = '';
+                 setBotStatus('thinking'); // User done, bot processing
               }
               if (currentOutputTransRef.current.trim()) {
-                 setTranscript(prev => [...prev, {
-                    id: generateId(),
-                    role: 'model',
-                    text: currentOutputTransRef.current,
-                    timestamp: Date.now()
-                 }]);
+                 setTranscript(prev => [...prev, { id: generateId(), role: 'model', text: currentOutputTransRef.current, timestamp: Date.now() }]);
                  currentOutputTransRef.current = '';
+                 setBotStatus('idle'); // Bot done
               }
             }
 
-            // Handle Audio
+            // Audio handling
             const base64Audio = message.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
             if (base64Audio && outputAudioContextRef.current && outputNodeRef.current) {
+               setBotStatus('speaking');
                try {
                    const ctx = outputAudioContextRef.current;
                    nextStartTimeRef.current = Math.max(nextStartTimeRef.current, ctx.currentTime);
-                   
-                   const audioBuffer = await decodeAudioData(
-                       decode(base64Audio),
-                       ctx,
-                       24000,
-                       1
-                   );
-                   
+                   const audioBuffer = await decodeAudioData(decode(base64Audio), ctx, 24000, 1);
                    const source = ctx.createBufferSource();
                    source.buffer = audioBuffer;
                    source.connect(outputNodeRef.current);
-                   
                    source.addEventListener('ended', () => {
                        sourcesRef.current.delete(source);
+                       if (sourcesRef.current.size === 0) setBotStatus('idle');
                    });
-                   
                    source.start(nextStartTimeRef.current);
                    nextStartTimeRef.current += audioBuffer.duration;
                    sourcesRef.current.add(source);
-               } catch (err) {
-                   console.error("Audio decode error", err);
-               }
+               } catch (err) { console.error(err); }
             }
             
-            // Handle Interrupt
             if (message.serverContent?.interrupted) {
-                // Clear audio queue
-                sourcesRef.current.forEach(s => {
-                    try { s.stop(); } catch(e){}
-                });
+                sourcesRef.current.forEach(s => { try { s.stop(); } catch(e){} });
                 sourcesRef.current.clear();
                 nextStartTimeRef.current = 0;
+                setBotStatus('listening');
             }
           },
-          onclose: () => {
-            console.log("Gemini Live Closed");
-            setIsConnected(false);
-          },
-          onerror: (err) => {
-            console.error("Gemini Live Error", err);
-            setIsConnected(false);
-          }
+          onclose: () => setIsConnected(false),
+          onerror: (err) => setIsConnected(false)
         }
       });
-      
       sessionRef.current = sessionPromise;
-
-    } catch (err) {
-      console.error("Connection failed", err);
-    }
+    } catch (err) { console.error(err); }
   };
 
   const disconnect = () => {
-    // 1. Close session
-    if (sessionRef.current) {
-       // There isn't a direct .close() on the promise, 
-       // but strictly speaking we just stop sending and close our context.
-       // The SDK manages the websocket.
-       // We can signal end via logic if needed, but mostly we just kill client side.
-       // NOTE: The TS definition for session might have close, but checking docs, usually just closing context/sockets works.
-       // Actually the example shows `onclose` callback but not explicit close method call on session object in the simple snippet.
-       // We will just assume dropping it and closing contexts is enough for now or use `session.close()` if available in the resolved object.
-       sessionRef.current.then((s: any) => {
-          if (s.close) s.close();
-       });
-       sessionRef.current = null;
-    }
-    
-    // 2. Stop audio tracks
-    if (streamRef.current) {
-        streamRef.current.getTracks().forEach(t => t.stop());
-        streamRef.current = null;
-    }
-
-    // 3. Close contexts
-    if (audioContextRef.current) {
-        audioContextRef.current.close();
-        audioContextRef.current = null;
-    }
-    if (outputAudioContextRef.current) {
-        outputAudioContextRef.current.close();
-        outputAudioContextRef.current = null;
-    }
-    
+    if (sessionRef.current) sessionRef.current.then((s: any) => s.close && s.close());
+    if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
+    if (audioContextRef.current) audioContextRef.current.close();
+    if (outputAudioContextRef.current) outputAudioContextRef.current.close();
     setIsConnected(false);
   };
 
@@ -328,141 +253,169 @@ export const BotInterviewPage = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto h-[calc(100vh-6rem)] flex flex-col gap-4">
-      {/* Header */}
-      <Card className="flex-shrink-0">
-        <CardContent className="p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-                <div className={cn("w-3 h-3 rounded-full animate-pulse", isConnected ? "bg-green-500" : "bg-red-500")} />
-                <div>
-                   <h2 className="font-semibold text-slate-900">{activeConfig.topic} Interview</h2>
-                   <p className="text-xs text-slate-500">{isConnected ? "Live Connection Active" : "Disconnected"}</p>
-                </div>
+    <div className="flex flex-col h-[calc(100vh-4rem)] bg-white overflow-hidden relative">
+      
+      {/* 7.2 Header */}
+      <header className="flex-shrink-0 h-16 bg-brand-purple flex items-center justify-between px-6 shadow-md z-20">
+         <div className="flex items-center gap-4">
+            <div className="relative">
+               <div className={cn("w-3 h-3 rounded-full", isConnected ? "bg-red-500 animate-pulse" : "bg-slate-400")} />
+               {isConnected && <div className="absolute inset-0 rounded-full bg-red-500 animate-ping opacity-75"></div>}
             </div>
-            <div className="flex items-center gap-4">
-                <div className="font-mono text-lg font-medium text-slate-700">
-                    {Math.floor(duration/60)}:{(duration%60).toString().padStart(2,'0')}
-                </div>
-                {!isConnected ? (
-                    <Button onClick={connect} className="bg-green-600 hover:bg-green-700">
-                        Start Connection
-                    </Button>
-                ) : (
-                    <Button variant="destructive" onClick={handleEndSession}>
-                        <PhoneOff className="mr-2 h-4 w-4" />
-                        End Call
-                    </Button>
-                )}
+            <div>
+               <h1 className="text-white font-bold text-lg tracking-tight">Live Interview</h1>
+               <div className="flex items-center gap-2 text-xs text-brand-lavender">
+                  <span>{isConnected ? "Connected" : "Standby"}</span>
+                  <span>•</span>
+                  <span className="font-mono">{Math.floor(duration/60)}:{(duration%60).toString().padStart(2,'0')}</span>
+               </div>
             </div>
-        </CardContent>
-      </Card>
-
-      {/* Main Content Area */}
-      <div className="flex-1 flex gap-4 overflow-hidden">
-         {/* Visualizer / Avatar */}
-         <div className="w-1/3 flex flex-col gap-4">
-            <Card className="flex-1 flex flex-col items-center justify-center bg-slate-900 text-white relative overflow-hidden border-none shadow-xl">
-               {/* Background effects */}
-               <div className="absolute inset-0 bg-gradient-to-b from-indigo-900/20 to-slate-900 z-0" />
-               
-               <div className="relative z-10 flex flex-col items-center gap-6">
-                   <div className="relative">
-                       <div className={cn("absolute inset-0 bg-indigo-500 rounded-full blur-xl opacity-20 transition-all duration-100", volumeLevel > 10 ? "scale-150" : "scale-100")} />
-                       <div className="h-24 w-24 bg-slate-800 rounded-full flex items-center justify-center border-4 border-slate-700 relative">
-                          <Bot className="h-12 w-12 text-indigo-400" />
-                          {/* Speaking Indicator for Bot - simplistic approximation */}
-                          {transcript.length > 0 && transcript[transcript.length-1].role === 'model' && (
-                              <span className="absolute -top-1 -right-1 flex h-4 w-4">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-4 w-4 bg-green-500"></span>
-                              </span>
-                          )}
-                       </div>
-                   </div>
-                   
-                   <div className="text-center">
-                       <h3 className="text-lg font-medium text-indigo-100">Gemini Interviewer</h3>
-                       <p className="text-sm text-indigo-300/60">AI Agent</p>
-                   </div>
-
-                   {/* User Mic Status */}
-                   <div className="mt-8">
-                       <Button 
-                         onClick={() => setIsMicOn(!isMicOn)}
-                         className={cn(
-                            "rounded-full w-14 h-14 p-0 flex items-center justify-center transition-all",
-                            isMicOn ? "bg-slate-700 hover:bg-slate-600 text-white" : "bg-red-500 hover:bg-red-600 text-white"
-                         )}
-                       >
-                         {isMicOn ? <Mic className="h-6 w-6" /> : <MicOff className="h-6 w-6" />}
-                       </Button>
-                   </div>
-               </div>
-
-               {/* Waveform Visualizer (Simple CSS based) */}
-               <div className="absolute bottom-0 left-0 right-0 h-24 flex items-end justify-center gap-1 pb-4 opacity-50">
-                  {[...Array(10)].map((_, i) => (
-                      <div 
-                        key={i} 
-                        className="w-2 bg-indigo-500 rounded-t-full transition-all duration-75"
-                        style={{ height: `${Math.max(10, volumeLevel * Math.random() * 2 + 10)}%` }} 
-                      />
-                  ))}
-               </div>
-            </Card>
          </div>
+         <Button 
+            variant="outline" 
+            size="sm"
+            onClick={handleEndSession} 
+            className="border-white/30 text-white hover:bg-white/10 hover:border-white/50"
+         >
+            <LogOut className="h-4 w-4 mr-2" />
+            End Session
+         </Button>
+      </header>
 
-         {/* Transcript */}
-         <Card className="w-2/3 flex flex-col bg-white">
-            <div className="p-4 border-b border-slate-100 font-medium text-slate-700 flex items-center gap-2">
-                <Volume2 className="h-4 w-4" />
-                Live Transcript
+      {/* 7.2 Conversation Area */}
+      <div 
+         ref={scrollRef}
+         className="flex-1 overflow-y-auto bg-gradient-to-b from-brand-lavender/30 to-brand-offWhite p-6 space-y-6 pb-32"
+      >
+         {transcript.length === 0 && !isConnected && (
+            <div className="h-full flex flex-col items-center justify-center text-center opacity-60">
+               <div className="w-24 h-24 bg-brand-purple/10 rounded-full flex items-center justify-center mb-4">
+                  <Bot className="h-10 w-10 text-brand-purple" />
+               </div>
+               <p className="text-slate-500 font-medium">Ready to start your {activeConfig.topic} interview?</p>
+               <p className="text-sm text-slate-400">Press the button below to connect.</p>
             </div>
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50">
-               {transcript.length === 0 && (
-                   <div className="h-full flex flex-col items-center justify-center text-slate-400 italic">
-                       Waiting for conversation to start...
-                   </div>
+         )}
+
+         {transcript.map((msg) => (
+            <div key={msg.id} className={cn("flex w-full", msg.role === 'user' ? "justify-end" : "justify-start")}>
+               <div className={cn("flex max-w-[80%] md:max-w-[60%] gap-3", msg.role === 'user' ? "flex-row-reverse" : "flex-row")}>
+                  {/* Avatar */}
+                  <div className={cn(
+                     "w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm border-2 border-white",
+                     msg.role === 'user' ? "bg-brand-purple" : "bg-gradient-to-br from-brand-turquoise to-teal-500"
+                  )}>
+                     {msg.role === 'user' ? <User className="h-5 w-5 text-white" /> : <Bot className="h-5 w-5 text-white" />}
+                  </div>
+                  
+                  {/* Bubble */}
+                  <div className="flex flex-col gap-1">
+                     <div className={cn(
+                        "p-4 text-sm leading-relaxed shadow-sm relative",
+                        msg.role === 'user' 
+                           ? "bg-brand-purple text-white rounded-2xl rounded-tr-none" 
+                           : "bg-white text-slate-800 rounded-2xl rounded-tl-none border border-slate-100"
+                     )}>
+                        {msg.text}
+                     </div>
+                     <span className={cn("text-[10px] text-slate-400", msg.role === 'user' ? "text-right" : "text-left")}>
+                        {new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                     </span>
+                  </div>
+               </div>
+            </div>
+         ))}
+
+         {/* Streaming / Status Indicators */}
+         {botStatus === 'thinking' && (
+             <div className="flex justify-start">
+                 <div className="flex gap-3">
+                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-turquoise to-teal-500 flex items-center justify-center shadow-sm">
+                         <Bot className="h-5 w-5 text-white" />
+                     </div>
+                     <div className="bg-white p-4 rounded-2xl rounded-tl-none border border-slate-100 flex items-center gap-2">
+                         <div className="flex space-x-1">
+                             <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                             <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                             <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                         </div>
+                         <span className="text-xs text-slate-400 font-medium">Thinking...</span>
+                     </div>
+                 </div>
+             </div>
+         )}
+      </div>
+
+      {/* 7.3 Bottom Control Panel */}
+      <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-slate-100 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] p-4 z-30">
+         <div className="max-w-4xl mx-auto flex items-center justify-between">
+            
+            {/* Left: Mode/Settings */}
+            <div className="flex items-center gap-4 w-1/3">
+               <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-full border border-slate-200">
+                  <Radio className="h-3 w-3 text-brand-turquoise" />
+                  <span className="text-xs font-medium text-slate-600">Auto-Detect</span>
+               </div>
+            </div>
+
+            {/* Center: Main Record Button */}
+            <div className="flex flex-col items-center justify-center -mt-8 relative w-1/3">
+               {!isConnected ? (
+                  <button 
+                     onClick={connect}
+                     className="w-20 h-20 rounded-full bg-brand-turquoise hover:bg-teal-500 shadow-xl shadow-brand-turquoise/40 flex items-center justify-center transition-transform hover:scale-105 active:scale-95 border-4 border-white"
+                  >
+                     <Mic className="h-8 w-8 text-white" />
+                  </button>
+               ) : (
+                  <div className="relative">
+                     {/* Pulse Rings */}
+                     <div className={cn("absolute inset-0 rounded-full border-4 border-red-500 animate-ping opacity-20", botStatus === 'listening' ? "block" : "hidden")} />
+                     
+                     <button 
+                        onClick={() => setIsMicOn(!isMicOn)}
+                        className={cn(
+                           "relative z-10 w-20 h-20 rounded-full flex items-center justify-center transition-all border-4 border-white shadow-xl",
+                           isMicOn 
+                              ? "bg-red-500 hover:bg-red-600 shadow-red-500/30" 
+                              : "bg-slate-400 hover:bg-slate-500"
+                        )}
+                     >
+                        {isMicOn ? <StopCircle className="h-8 w-8 text-white fill-current animate-pulse" /> : <MicOff className="h-8 w-8 text-white" />}
+                     </button>
+                  </div>
                )}
-               {transcript.map((msg) => (
-                   <div key={msg.id} className={cn("flex gap-3", msg.role === 'user' ? "flex-row-reverse" : "")}>
-                       <div className={cn(
-                           "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-1",
-                           msg.role === 'user' ? "bg-blue-100 text-blue-600" : "bg-indigo-100 text-indigo-600"
-                       )}>
-                           {msg.role === 'user' ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
-                       </div>
-                       <div className={cn(
-                           "p-3 rounded-lg max-w-[80%] text-sm leading-relaxed",
-                           msg.role === 'user' ? "bg-blue-600 text-white rounded-tr-none" : "bg-white border border-slate-200 text-slate-800 rounded-tl-none shadow-sm"
-                       )}>
-                           {msg.text}
-                       </div>
-                   </div>
-               ))}
-               {/* Streaming placeholders */}
-               {currentInputTransRef.current && (
-                   <div className="flex gap-3 flex-row-reverse opacity-60">
-                       <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 mt-1">
-                           <User className="h-4 w-4 text-blue-600" />
-                       </div>
-                       <div className="p-3 rounded-lg max-w-[80%] text-sm leading-relaxed bg-blue-600 text-white rounded-tr-none">
-                           {currentInputTransRef.current}...
-                       </div>
-                   </div>
-               )}
-               {currentOutputTransRef.current && (
-                   <div className="flex gap-3 opacity-60">
-                       <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0 mt-1">
-                           <Bot className="h-4 w-4 text-indigo-600" />
-                       </div>
-                       <div className="p-3 rounded-lg max-w-[80%] text-sm leading-relaxed bg-white border border-slate-200 text-slate-800 rounded-tl-none shadow-sm">
-                           {currentOutputTransRef.current}...
-                       </div>
+               {/* Waveform Visualizer under button */}
+               {isConnected && isMicOn && (
+                   <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 flex items-end gap-1 h-8 opacity-50">
+                       {[...Array(5)].map((_,i) => (
+                           <div 
+                              key={i} 
+                              className="w-1 bg-red-500 rounded-full transition-all duration-75" 
+                              style={{ height: `${Math.max(20, Math.random() * volumeLevel)}%` }} 
+                           />
+                       ))}
                    </div>
                )}
             </div>
-         </Card>
+
+            {/* Right: Emergency Controls */}
+            <div className="flex items-center justify-end gap-3 w-1/3">
+               <Button variant="ghost" size="icon" className="text-slate-400 hover:text-orange-500">
+                  <PauseCircle className="h-6 w-6" />
+               </Button>
+               <Button variant="ghost" size="icon" className="text-slate-400 hover:text-red-500" onClick={handleEndSession}>
+                  <PhoneOff className="h-6 w-6" />
+               </Button>
+            </div>
+         </div>
+         
+         {/* Live Text Caption */}
+         {isConnected && (
+            <div className="text-center mt-6 text-xs font-mono text-slate-400">
+               {botStatus === 'speaking' ? "Interviewer speaking..." : botStatus === 'listening' ? "Listening..." : "Live"}
+            </div>
+         )}
       </div>
     </div>
   );
