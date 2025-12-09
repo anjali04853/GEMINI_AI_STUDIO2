@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Mic, Square, Play, RotateCcw, Trash2, StopCircle, Pause } from 'lucide-react';
+import { Mic, Square, Play, RotateCcw, Trash2, Pause, StopCircle } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { cn } from '../../lib/utils';
 
@@ -7,12 +7,14 @@ interface AudioRecorderProps {
   onRecordingComplete: (blob: Blob, url: string, transcript: string, duration: number) => void;
   existingAudioUrl?: string;
   existingTranscript?: string;
+  className?: string;
 }
 
 export const AudioRecorder: React.FC<AudioRecorderProps> = ({ 
   onRecordingComplete, 
   existingAudioUrl,
-  existingTranscript
+  existingTranscript,
+  className
 }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
@@ -25,6 +27,13 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
   const recognitionRef = useRef<any>(null); // SpeechRecognition
   const timerRef = useRef<any>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // For visualizer
+  const [volumeLevel, setVolumeLevel] = useState(0);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
 
   useEffect(() => {
     // Initialize SpeechRecognition if available
@@ -50,10 +59,12 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
     
     return () => {
       stopRecordingProcess();
+      cancelAnimationFrame(animationFrameRef.current!);
+      if (audioContextRef.current) audioContextRef.current.close();
     };
   }, []);
 
-  // Update internal state if props change (e.g. moving between questions)
+  // Update internal state if props change
   useEffect(() => {
     setAudioUrl(existingAudioUrl || null);
     setTranscript(existingTranscript || '');
@@ -66,6 +77,32 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
       mediaRecorderRef.current = new MediaRecorder(stream);
       audioChunksRef.current = [];
 
+      // Audio Context for Visualizer
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      audioContextRef.current = audioCtx;
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 256;
+      analyserRef.current = analyser;
+      const source = audioCtx.createMediaStreamSource(stream);
+      source.connect(analyser);
+      sourceRef.current = source;
+
+      const bufferLength = analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+
+      const updateVolume = () => {
+        analyser.getByteFrequencyData(dataArray);
+        let sum = 0;
+        for(let i = 0; i < bufferLength; i++) {
+            sum += dataArray[i];
+        }
+        const average = sum / bufferLength;
+        setVolumeLevel(average);
+        animationFrameRef.current = requestAnimationFrame(updateVolume);
+      };
+      updateVolume();
+
+
       mediaRecorderRef.current.ondataavailable = (event) => {
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
@@ -76,16 +113,18 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         const url = URL.createObjectURL(audioBlob);
         setAudioUrl(url);
-        onRecordingComplete(audioBlob, url, transcript, recordingTime); // Note: transcript might lag slightly, handled in real impl by separate state
+        onRecordingComplete(audioBlob, url, transcript, recordingTime);
         
         // Stop all tracks
         stream.getTracks().forEach(track => track.stop());
+        cancelAnimationFrame(animationFrameRef.current!);
+        setVolumeLevel(0);
       };
 
       mediaRecorderRef.current.start();
       
       if (recognitionRef.current) {
-        setTranscript(''); // Clear previous for new recording
+        setTranscript(''); 
         try {
             recognitionRef.current.start();
         } catch (e) {
@@ -122,7 +161,6 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
 
   const stopRecording = () => {
     stopRecordingProcess();
-    // onRecordingComplete called in onstop event
   };
 
   const deleteRecording = () => {
@@ -153,87 +191,122 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
   };
 
   return (
-    <div className="flex flex-col items-center space-y-6 w-full max-w-md mx-auto p-6 bg-slate-50 rounded-xl border border-slate-200">
+    <div className={cn("flex flex-col items-center space-y-8 w-full", className)}>
       
-      {/* Visualizer / Status Area */}
-      <div className="h-32 w-full bg-white rounded-lg border border-slate-200 flex items-center justify-center relative overflow-hidden">
+      {/* Central Visualizer / Interaction Area */}
+      <div className="relative flex items-center justify-center">
+        {/* Animated Rings for Recording */}
+        {isRecording && (
+          <div className="absolute inset-0 rounded-full border-4 border-red-200 animate-ping opacity-75 scale-150"></div>
+        )}
+        
+        {/* Main Action Button */}
         {isRecording ? (
-          <div className="flex items-center gap-1">
-             {/* Mock waveform animation */}
-             {[1,2,3,4,5,6,7,8].map(i => (
-                 <div 
-                   key={i} 
-                   className="w-2 bg-red-500 rounded-full animate-pulse"
-                   style={{ 
-                       height: `${Math.random() * 40 + 20}px`,
-                       animationDuration: `${Math.random() * 0.5 + 0.5}s` 
-                    }}
-                 />
-             ))}
-             <div className="absolute top-2 right-3 flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                <span className="text-xs font-mono text-red-500 font-bold">REC {formatTime(recordingTime)}</span>
-             </div>
-          </div>
+           // RECORDING STATE -> STOP
+           <button 
+             onClick={stopRecording}
+             className="relative z-10 w-24 h-24 rounded-full bg-red-500 hover:bg-red-600 shadow-xl flex items-center justify-center transition-all transform hover:scale-105 active:scale-95 group"
+           >
+              <Square className="h-8 w-8 text-white fill-current animate-pulse" />
+              <span className="absolute -bottom-8 text-sm font-bold text-red-500 font-mono">
+                {formatTime(recordingTime)}
+              </span>
+           </button>
         ) : audioUrl ? (
-          <div className="text-center w-full px-4">
-             <p className="text-sm font-medium text-slate-700 mb-2">Recording Captured</p>
-             <audio 
+           // RECORDED STATE -> PLAY
+           <button 
+             onClick={togglePlayback}
+             className={cn(
+               "relative z-10 w-24 h-24 rounded-full shadow-xl flex items-center justify-center transition-all transform hover:scale-105 active:scale-95 border-4 border-white",
+               isPlaying ? "bg-brand-turquoise" : "bg-green-500 hover:bg-green-600"
+             )}
+           >
+              {isPlaying ? <Pause className="h-10 w-10 text-white fill-current" /> : <Play className="h-10 w-10 text-white fill-current ml-1" />}
+              <audio 
                 ref={audioRef} 
                 src={audioUrl} 
                 onEnded={() => setIsPlaying(false)} 
                 className="hidden" 
-             />
-             <div className="h-1 bg-slate-100 rounded-full overflow-hidden w-full max-w-[200px] mx-auto">
-                 <div className="h-full bg-blue-500 w-full" />
-             </div>
-          </div>
+              />
+           </button>
         ) : (
-          <div className="text-slate-400 flex flex-col items-center">
-            <Mic className="h-8 w-8 mb-2 opacity-50" />
-            <span className="text-sm">Ready to record</span>
+           // IDLE STATE -> RECORD
+           <button 
+             onClick={startRecording}
+             className="relative z-10 w-24 h-24 rounded-full bg-brand-turquoise hover:bg-teal-500 shadow-xl shadow-brand-turquoise/30 flex items-center justify-center transition-all transform hover:scale-105 active:scale-95 border-4 border-white"
+           >
+              <Mic className="h-10 w-10 text-white" />
+           </button>
+        )}
+
+        {/* Live Waveform Visualization */}
+        {isRecording && (
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 flex items-center justify-center pointer-events-none -z-10">
+              <div className="w-full h-full rounded-full border border-red-100 flex items-center justify-center">
+                 {/* Just decorative pulsing rings for now, simplistic visualizer */}
+                 <div 
+                   className="absolute rounded-full border border-red-200 transition-all duration-75"
+                   style={{ width: `${100 + volumeLevel}%`, height: `${100 + volumeLevel}%`, opacity: 0.5 }}
+                 ></div>
+              </div>
           </div>
         )}
       </div>
 
-      {/* Controls */}
-      <div className="flex items-center gap-4">
-        {!isRecording && !audioUrl && (
-          <Button onClick={startRecording} className="rounded-full w-14 h-14 bg-red-600 hover:bg-red-700 p-0 flex items-center justify-center shadow-lg transform transition hover:scale-105">
-            <Mic className="h-6 w-6 text-white" />
-          </Button>
-        )}
+      {/* Secondary Controls (Only when recorded) */}
+      {audioUrl && !isRecording && (
+         <div className="flex items-center gap-6 animate-in fade-in slide-in-from-bottom-4">
+             <Button 
+               variant="outline" 
+               onClick={deleteRecording} 
+               className="h-12 w-12 rounded-full p-0 border-slate-200 text-slate-400 hover:text-red-500 hover:border-red-200 hover:bg-red-50 transition-colors shadow-sm"
+               title="Delete & Re-record"
+             >
+                <Trash2 className="h-5 w-5" />
+             </Button>
+             
+             <Button 
+               variant="outline"
+               onClick={() => { deleteRecording(); startRecording(); }}
+               className="h-12 w-12 rounded-full p-0 border-brand-yellow text-brand-yellow hover:bg-yellow-50 hover:border-yellow-400 transition-colors shadow-sm"
+               title="Re-record immediately"
+             >
+                <RotateCcw className="h-5 w-5" />
+             </Button>
+         </div>
+      )}
 
-        {isRecording && (
-          <Button onClick={stopRecording} className="rounded-full w-14 h-14 bg-slate-900 hover:bg-slate-800 p-0 flex items-center justify-center shadow-lg">
-            <Square className="h-5 w-5 text-white fill-current" />
-          </Button>
-        )}
-
-        {!isRecording && audioUrl && (
-          <>
-            <Button variant="outline" onClick={deleteRecording} className="rounded-full w-10 h-10 p-0 border-slate-300 text-slate-500 hover:text-red-600 hover:border-red-200">
-              <Trash2 className="h-4 w-4" />
-            </Button>
-
-            <Button onClick={togglePlayback} className="rounded-full w-14 h-14 bg-blue-600 hover:bg-blue-700 p-0 flex items-center justify-center shadow-lg">
-              {isPlaying ? <Pause className="h-6 w-6 fill-current" /> : <Play className="h-6 w-6 fill-current ml-1" />}
-            </Button>
-
-            <Button variant="outline" onClick={() => { deleteRecording(); startRecording(); }} className="rounded-full w-10 h-10 p-0 border-slate-300 text-slate-500 hover:text-blue-600 hover:border-blue-200">
-              <RotateCcw className="h-4 w-4" />
-            </Button>
-          </>
-        )}
+      {/* Waveform / Visualizer Bar */}
+      <div className="w-full h-16 bg-slate-50 rounded-xl flex items-end justify-center gap-1 p-2 border border-slate-100 overflow-hidden">
+         {isRecording ? (
+             // Live Recording Waves (Red)
+             Array.from({ length: 20 }).map((_, i) => (
+                 <div 
+                   key={i} 
+                   className="w-2 bg-red-400 rounded-t-full transition-all duration-100"
+                   style={{ 
+                       height: `${Math.max(20, Math.random() * volumeLevel * 3)}%`,
+                       opacity: 0.7 
+                   }}
+                 />
+             ))
+         ) : audioUrl ? (
+             // Playback Waves (Turquoise)
+             Array.from({ length: 20 }).map((_, i) => (
+                 <div 
+                   key={i} 
+                   className={cn(
+                       "w-2 rounded-t-full transition-all duration-300",
+                       isPlaying ? "bg-brand-turquoise animate-pulse" : "bg-slate-300"
+                   )}
+                   style={{ height: `${30 + Math.random() * 50}%` }}
+                 />
+             ))
+         ) : (
+             <span className="self-center text-xs text-slate-400 font-medium uppercase tracking-wider">Ready to Record</span>
+         )}
       </div>
 
-      {/* Transcript Preview */}
-      <div className="w-full text-center">
-        <p className="text-xs text-slate-400 mb-1 uppercase tracking-wide">Live Transcript</p>
-        <div className="text-sm text-slate-600 min-h-[1.5em] italic">
-            {transcript || (isRecording ? "Listening..." : "Transcript will appear here...")}
-        </div>
-      </div>
     </div>
   );
 };
