@@ -19,17 +19,17 @@ export const Dashboard = () => {
   }, []);
 
   const themeClasses = {
-    purple: "border-t-4 border-brand-purple hover:shadow-brand-purple/10",
+    purple: "border-t-4 border-accent hover:shadow-accent/10",
     pink: "border-t-4 border-brand-pink hover:shadow-brand-pink/10",
     turquoise: "border-t-4 border-brand-turquoise hover:shadow-brand-turquoise/10",
     sky: "border-t-4 border-brand-sky hover:shadow-brand-sky/10",
   };
 
   const iconBgClasses = {
-    purple: "bg-brand-lavender text-brand-purple",
-    pink: "bg-pink-50 text-brand-pink",
-    turquoise: "bg-teal-50 text-brand-turquoise",
-    sky: "bg-sky-50 text-brand-sky",
+    purple: "bg-accent-light text-accent",
+    pink: "bg-pink-50 dark:bg-pink-900/20 text-brand-pink",
+    turquoise: "bg-teal-50 dark:bg-teal-900/20 text-brand-turquoise",
+    sky: "bg-sky-50 dark:bg-sky-900/20 text-brand-sky",
   };
 
   const stats = [
@@ -73,10 +73,10 @@ export const Dashboard = () => {
       
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight text-slate-900">Dashboard</h2>
-          <p className="text-slate-500 mt-1">Welcome back, {user?.name}! Here's your daily overview.</p>
+          <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Dashboard</h2>
+          <p className="text-slate-500 dark:text-slate-400 mt-1">Welcome back, {user?.name}! Here's your daily overview.</p>
         </div>
-        <div className="text-sm text-slate-500 bg-white px-4 py-2 rounded-full shadow-sm border border-slate-100 flex items-center gap-2">
+        <div className="text-sm text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 px-4 py-2 rounded-full shadow-sm border border-slate-100 dark:border-slate-700 flex items-center gap-2">
            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
            System Operational
         </div>
@@ -95,7 +95,7 @@ export const Dashboard = () => {
               )}
 
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-slate-600">
+                <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-300">
                   {stat.title}
                 </CardTitle>
                 <div className={cn("p-2 rounded-full transition-transform group-hover:scale-110", iconBgClasses[stat.theme])}>
@@ -110,8 +110,8 @@ export const Dashboard = () => {
                   </div>
                 ) : (
                   <div>
-                      <div className="text-2xl font-bold text-slate-900">{stat.value}</div>
-                      <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
+                      <div className="text-2xl font-bold text-slate-900 dark:text-white">{stat.value}</div>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1">
                          {stat.description}
                       </p>
                   </div>
@@ -123,9 +123,9 @@ export const Dashboard = () => {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4 border-t-4 border-slate-200">
+        <Card className="col-span-4 border-t-4 border-accent">
           <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
+            <CardTitle className="dark:text-white">Recent Activity</CardTitle>
             <CardDescription>
               Your latest interactions across the platform.
             </CardDescription>
@@ -146,20 +146,20 @@ export const Dashboard = () => {
             ) : (
               <div className="space-y-6">
                 {[
-                    { title: "React Assessment", desc: "Completed with 92% score", time: "2h ago", icon: Brain, color: "bg-brand-lavender text-brand-purple" },
-                    { title: "Voice Practice", desc: "Recorded 'Tell me about yourself'", time: "5h ago", icon: Mic, color: "bg-orange-100 text-orange-600" },
-                    { title: "System Design Quiz", desc: "Attempted 10 questions", time: "1d ago", icon: Activity, color: "bg-blue-100 text-blue-600" }
+                    { title: "React Assessment", desc: "Completed with 92% score", time: "2h ago", icon: Brain, color: "bg-accent-light text-accent" },
+                    { title: "Voice Practice", desc: "Recorded 'Tell me about yourself'", time: "5h ago", icon: Mic, color: "bg-orange-100 dark:bg-orange-900/20 text-orange-600" },
+                    { title: "System Design Quiz", desc: "Attempted 10 questions", time: "1d ago", icon: Activity, color: "bg-blue-100 dark:bg-blue-900/20 text-blue-600" }
                 ].map((item, i) => (
-                  <div key={i} className="flex items-center group p-2 hover:bg-slate-50 rounded-lg transition-colors">
+                  <div key={i} className="flex items-center group p-2 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg transition-colors">
                     <div className={cn("h-10 w-10 rounded-full flex items-center justify-center mr-4 shadow-sm", item.color)}>
                       <item.icon className="h-5 w-5" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-slate-900 truncate">{item.title}</p>
-                      <p className="text-xs text-slate-500 truncate">{item.desc}</p>
+                      <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{item.title}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{item.desc}</p>
                     </div>
                     <div className="ml-auto text-xs text-slate-400 font-medium">{item.time}</div>
-                    <ArrowUpRight className="h-4 w-4 text-slate-300 ml-2 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <ArrowUpRight className="h-4 w-4 text-slate-300 dark:text-slate-600 ml-2 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
                 ))}
               </div>
@@ -167,9 +167,9 @@ export const Dashboard = () => {
           </CardContent>
         </Card>
         
-        <Card className="col-span-3 border-t-4 border-slate-200 bg-gradient-to-br from-white to-slate-50">
+        <Card className="col-span-3 border-t-4 border-accent bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-900">
           <CardHeader>
-            <CardTitle>Recommended For You</CardTitle>
+            <CardTitle className="dark:text-white">Recommended For You</CardTitle>
             <CardDescription>
               Based on your recent performance.
             </CardDescription>
@@ -182,20 +182,20 @@ export const Dashboard = () => {
                 </div>
              ) : (
                 <div className="space-y-4">
-                  <div className="p-4 bg-white rounded-lg border border-slate-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer relative overflow-hidden group">
-                     <div className="absolute left-0 top-0 bottom-0 w-1 bg-brand-purple"></div>
-                     <h4 className="font-semibold text-slate-900 text-sm mb-1 group-hover:text-brand-purple transition-colors">Advanced React Hooks</h4>
-                     <p className="text-xs text-slate-500">Level up your state management skills.</p>
-                     <div className="mt-3 flex items-center text-xs font-medium text-brand-purple">
+                  <div className="p-4 bg-white dark:bg-slate-700 rounded-lg border border-slate-100 dark:border-slate-600 shadow-sm hover:shadow-md transition-shadow cursor-pointer relative overflow-hidden group">
+                     <div className="absolute left-0 top-0 bottom-0 w-1 bg-accent"></div>
+                     <h4 className="font-semibold text-slate-900 dark:text-white text-sm mb-1 group-hover:text-accent transition-colors">Advanced React Hooks</h4>
+                     <p className="text-xs text-slate-500 dark:text-slate-400">Level up your state management skills.</p>
+                     <div className="mt-3 flex items-center text-xs font-medium text-accent">
                         Start Lesson <ArrowUpRight className="ml-1 h-3 w-3" />
                      </div>
                   </div>
                   
-                  <div className="p-4 bg-white rounded-lg border border-slate-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer relative overflow-hidden group">
-                     <div className="absolute left-0 top-0 bottom-0 w-1 bg-brand-pink"></div>
-                     <h4 className="font-semibold text-slate-900 text-sm mb-1 group-hover:text-brand-pink transition-colors">Behavioral Interview Mock</h4>
-                     <p className="text-xs text-slate-500">Practice STAR method responses.</p>
-                     <div className="mt-3 flex items-center text-xs font-medium text-brand-pink">
+                  <div className="p-4 bg-white dark:bg-slate-700 rounded-lg border border-slate-100 dark:border-slate-600 shadow-sm hover:shadow-md transition-shadow cursor-pointer relative overflow-hidden group">
+                     <div className="absolute left-0 top-0 bottom-0 w-1 bg-accent"></div>
+                     <h4 className="font-semibold text-slate-900 dark:text-white text-sm mb-1 group-hover:text-accent transition-colors">Behavioral Interview Mock</h4>
+                     <p className="text-xs text-slate-500 dark:text-slate-400">Practice STAR method responses.</p>
+                     <div className="mt-3 flex items-center text-xs font-medium text-accent">
                         Start Practice <ArrowUpRight className="ml-1 h-3 w-3" />
                      </div>
                   </div>

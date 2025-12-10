@@ -5,7 +5,7 @@ interface CardProps extends React.HTMLAttributes<HTMLDivElement> {}
 
 export const Card: React.FC<CardProps> = ({ className, children, ...props }) => (
   <div
-    className={cn("rounded-lg border border-slate-200 bg-white text-slate-950 shadow-sm", className)}
+    className={cn("rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-950 dark:text-slate-100 shadow-sm", className)}
     {...props}
   >
     {children}
@@ -25,7 +25,7 @@ export const CardTitle: React.FC<React.HTMLAttributes<HTMLHeadingElement>> = ({ 
 );
 
 export const CardDescription: React.FC<React.HTMLAttributes<HTMLParagraphElement>> = ({ className, children, ...props }) => (
-  <p className={cn("text-sm text-slate-500", className)} {...props}>
+  <p className={cn("text-sm text-slate-500 dark:text-slate-400", className)} {...props}>
     {children}
   </p>
 );

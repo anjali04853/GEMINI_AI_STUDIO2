@@ -52,19 +52,19 @@ export const Breadcrumb: React.FC<BreadcrumbProps> = ({ items, className }) => {
         return (
           <React.Fragment key={index}>
             {index > 0 && (
-              <ChevronRight className="h-4 w-4 text-slate-400 flex-shrink-0" />
+              <ChevronRight className="h-4 w-4 text-slate-400 dark:text-slate-500 flex-shrink-0" />
             )}
             {isLast || !item.href ? (
               <span className={cn(
                 'font-medium truncate max-w-[150px]',
-                isLast ? 'text-slate-900' : 'text-slate-500'
+                isLast ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'
               )}>
                 {item.label}
               </span>
             ) : (
               <Link 
                 to={item.href}
-                className="text-slate-500 hover:text-brand-purple transition-colors truncate max-w-[150px]"
+                className="text-slate-500 dark:text-slate-400 hover:text-brand-purple transition-colors truncate max-w-[150px]"
               >
                 {index === 0 ? (
                   <Home className="h-4 w-4" />

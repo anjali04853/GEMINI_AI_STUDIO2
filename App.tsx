@@ -7,6 +7,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { ToastProvider } from './components/ui/Toast';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { OnboardingTour } from './components/OnboardingTour';
+import { ThemeProvider } from './components/ThemeProvider';
 
 // Lazy Load Pages
 const LandingPage = React.lazy(() => import('./pages/LandingPage').then(module => ({ default: module.LandingPage })));
@@ -42,6 +43,8 @@ const DatasetManagement = React.lazy(() => import('./pages/admin/DatasetManageme
 const SystemSettings = React.lazy(() => import('./pages/admin/SystemSettings').then(module => ({ default: module.SystemSettings })));
 const ProfilePage = React.lazy(() => import('./pages/profile/ProfilePage').then(module => ({ default: module.ProfilePage })));
 const AdminProfilePage = React.lazy(() => import('./pages/admin/AdminProfilePage').then(module => ({ default: module.AdminProfilePage })));
+const SettingsPage = React.lazy(() => import('./pages/settings/SettingsPage').then(module => ({ default: module.SettingsPage })));
+const AdminSettingsPage = React.lazy(() => import('./pages/admin/AdminSettingsPage').then(module => ({ default: module.AdminSettingsPage })));
 const NotFoundPage = React.lazy(() => import('./pages/NotFoundPage').then(module => ({ default: module.NotFoundPage })));
 const AccessDeniedPage = React.lazy(() => import('./pages/AccessDeniedPage').then(module => ({ default: module.AccessDeniedPage })));
 
@@ -84,11 +87,12 @@ const PublicRoute = ({ children }: { children?: React.ReactNode }) => {
 const App = () => {
   return (
     <ErrorBoundary>
-      <ToastProvider>
-        <Suspense fallback={<FullPageLoading />}>
-          <BrowserRouter>
-          <OfflineIndicator />
-          <OnboardingTour />
+      <ThemeProvider>
+        <ToastProvider>
+          <Suspense fallback={<FullPageLoading />}>
+            <BrowserRouter>
+            <OfflineIndicator />
+            <OnboardingTour />
           <Routes>
             {/* Public Routes */}
             <Route path="/" element={<PublicRoute><Suspense fallback={<Loading />}><LandingPage /></Suspense></PublicRoute>} />
@@ -145,10 +149,11 @@ const App = () => {
               {/* Utilities */}
               <Route path="chat" element={<Suspense fallback={<Loading />}><AIChatPage /></Suspense>} />
               <Route path="profile" element={<Suspense fallback={<Loading />}><ProfilePage /></Suspense>} />
-              <Route path="settings" element={<div className="p-4">Settings Page Placeholder</div>} />
+              <Route path="settings" element={<Suspense fallback={<Loading />}><SettingsPage /></Suspense>} />
               
-              {/* Admin Profile */}
+              {/* Admin Profile & Settings */}
               <Route path="admin/profile" element={<ProtectedRoute requireAdmin={true}><Suspense fallback={<Loading />}><AdminProfilePage /></Suspense></ProtectedRoute>} />
+              <Route path="admin/account" element={<ProtectedRoute requireAdmin={true}><Suspense fallback={<Loading />}><AdminSettingsPage /></Suspense></ProtectedRoute>} />
 
               {/* Protected 404 */}
               <Route path="*" element={<Suspense fallback={<Loading />}><NotFoundPage /></Suspense>} />
@@ -157,9 +162,10 @@ const App = () => {
             {/* Fallback for unauthenticated strict 404s outside dashboard */}
              <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
-          </BrowserRouter>
-        </Suspense>
-      </ToastProvider>
+            </BrowserRouter>
+          </Suspense>
+        </ToastProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 };

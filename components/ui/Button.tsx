@@ -20,11 +20,11 @@ export const Button: React.FC<ButtonProps> = ({
   const baseStyles = 'inline-flex items-center justify-center rounded-lg font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98]';
   
   const variants = {
-    primary: 'bg-gradient-to-r from-brand-purple to-brand-darkPurple text-white shadow-lg shadow-brand-purple/25 hover:shadow-brand-purple/40 hover:-translate-y-0.5 border border-transparent',
-    cta: 'bg-brand-pink text-white shadow-lg shadow-brand-pink/30 hover:shadow-brand-pink/50 hover:-translate-y-0.5 hover:scale-105 border border-transparent font-bold',
-    secondary: 'bg-white text-slate-900 border border-slate-200 hover:bg-slate-50 hover:text-brand-purple hover:border-brand-purple/20 shadow-sm',
-    outline: 'border-2 border-brand-purple text-brand-purple hover:bg-brand-purple hover:text-white',
-    ghost: 'hover:bg-brand-lavender hover:text-brand-purple',
+    primary: 'bg-accent text-white shadow-accent hover:-translate-y-0.5 border border-transparent',
+    cta: 'bg-accent text-white shadow-accent hover:-translate-y-0.5 hover:scale-105 border border-transparent font-bold',
+    secondary: 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-accent hover:border-accent/20 shadow-sm',
+    outline: 'border-2 border-accent text-accent hover:bg-accent hover:text-white',
+    ghost: 'hover:bg-accent-light hover:text-accent dark:hover:bg-slate-700',
     destructive: 'bg-red-500 text-white hover:bg-red-600 focus-visible:ring-red-500 shadow-md shadow-red-500/20',
   };
 

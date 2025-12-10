@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Enable class-based dark mode */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-brand-purple: #6C63FF;
   --color-brand-darkPurple: #5a52d5;
@@ -37,6 +40,300 @@
 body {
   font-family: 'Inter', sans-serif;
   background-color: #F9FAFB;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Dark Mode Styles */
+.dark body,
+.dark {
+  background-color: #0f172a;
+  color: #e2e8f0;
+}
+
+.dark .bg-white {
+  background-color: #1e293b !important;
+}
+
+.dark .bg-slate-50 {
+  background-color: #1e293b !important;
+}
+
+.dark .bg-slate-100 {
+  background-color: #334155 !important;
+}
+
+.dark .bg-brand-offWhite {
+  background-color: #0f172a !important;
+}
+
+.dark .bg-brand-lavender {
+  background-color: #1e293b !important;
+}
+
+/* Dark mode sidebar gradient override */
+.dark .from-brand-offWhite {
+  --tw-gradient-from: #0f172a !important;
+}
+
+.dark .to-brand-lavender {
+  --tw-gradient-to: #1e293b !important;
+}
+
+.dark .text-slate-900 {
+  color: #f1f5f9 !important;
+}
+
+.dark .text-slate-800 {
+  color: #e2e8f0 !important;
+}
+
+.dark .text-slate-700 {
+  color: #cbd5e1 !important;
+}
+
+.dark .text-slate-600 {
+  color: #94a3b8 !important;
+}
+
+.dark .text-slate-500 {
+  color: #64748b !important;
+}
+
+.dark .border-slate-200 {
+  border-color: #334155 !important;
+}
+
+.dark .border-slate-100 {
+  border-color: #1e293b !important;
+}
+
+.dark input,
+.dark select,
+.dark textarea {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+  color: #e2e8f0 !important;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #64748b !important;
+}
+
+.dark .shadow-md,
+.dark .shadow-lg,
+.dark .shadow-xl {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Dark mode cards */
+.dark [class*="Card"],
+.dark .rounded-xl.border,
+.dark .rounded-2xl.border,
+.dark .rounded-lg.border {
+  background-color: #1e293b;
+  border-color: #334155;
+}
+
+/* Dark mode hover states */
+.dark .hover\:bg-slate-100:hover {
+  background-color: #334155 !important;
+}
+
+.dark .hover\:bg-slate-50:hover {
+  background-color: #1e293b !important;
+}
+
+/* Accent color variations */
+:root {
+  --accent-color: #6C63FF;
+  --accent-light: #E6E6FA;
+  --accent-dark: #5a52d5;
+  --accent-rgb: 108, 99, 255;
+}
+
+[data-accent="purple"] {
+  --accent-color: #6C63FF;
+  --accent-light: #E6E6FA;
+  --accent-dark: #5a52d5;
+  --accent-rgb: 108, 99, 255;
+}
+
+[data-accent="turquoise"] {
+  --accent-color: #4ECDC4;
+  --accent-light: #d1faf7;
+  --accent-dark: #3db8b0;
+  --accent-rgb: 78, 205, 196;
+}
+
+[data-accent="pink"] {
+  --accent-color: #FF6B9D;
+  --accent-light: #ffe4ed;
+  --accent-dark: #e5527f;
+  --accent-rgb: 255, 107, 157;
+}
+
+[data-accent="blue"] {
+  --accent-color: #3B82F6;
+  --accent-light: #dbeafe;
+  --accent-dark: #2563eb;
+  --accent-rgb: 59, 130, 246;
+}
+
+[data-accent="green"] {
+  --accent-color: #10B981;
+  --accent-light: #d1fae5;
+  --accent-dark: #059669;
+  --accent-rgb: 16, 185, 129;
+}
+
+[data-accent="orange"] {
+  --accent-color: #F97316;
+  --accent-light: #ffedd5;
+  --accent-dark: #ea580c;
+  --accent-rgb: 249, 115, 22;
+}
+
+/* Accent color utility classes */
+.bg-accent {
+  background-color: var(--accent-color) !important;
+}
+
+.bg-accent-light {
+  background-color: var(--accent-light) !important;
+}
+
+.text-accent {
+  color: var(--accent-color) !important;
+}
+
+.border-accent {
+  border-color: var(--accent-color) !important;
+}
+
+.ring-accent {
+  --tw-ring-color: var(--accent-color) !important;
+}
+
+.shadow-accent {
+  box-shadow: 0 4px 14px 0 rgba(var(--accent-rgb), 0.3) !important;
+}
+
+/* Override brand-purple with accent color */
+.bg-brand-purple {
+  background-color: var(--accent-color) !important;
+}
+
+.text-brand-purple {
+  color: var(--accent-color) !important;
+}
+
+.border-brand-purple {
+  border-color: var(--accent-color) !important;
+}
+
+.hover\:text-brand-purple:hover {
+  color: var(--accent-color) !important;
+}
+
+.hover\:bg-brand-purple:hover {
+  background-color: var(--accent-color) !important;
+}
+
+.from-brand-purple {
+  --tw-gradient-from: var(--accent-color) !important;
+}
+
+.to-brand-purple {
+  --tw-gradient-to: var(--accent-color) !important;
+}
+
+.shadow-brand-purple\/20 {
+  box-shadow: 0 10px 15px -3px rgba(var(--accent-rgb), 0.2) !important;
+}
+
+/* Accent color for focus states */
+*:focus-visible {
+  outline: 2px solid var(--accent-color) !important;
+  outline-offset: 2px;
+}
+
+.focus\:ring-brand-purple:focus,
+.focus\:ring-brand-purple\/50:focus {
+  --tw-ring-color: rgba(var(--accent-rgb), 0.5) !important;
+}
+
+/* Button accent styles */
+.btn-accent {
+  background-color: var(--accent-color);
+  color: white;
+}
+
+.btn-accent:hover {
+  background-color: var(--accent-dark);
+}
+
+/* Sidebar active state with accent */
+.bg-brand-lavender {
+  background-color: var(--accent-light) !important;
+}
+
+.hover\:bg-brand-lavender:hover {
+  background-color: var(--accent-light) !important;
+}
+
+/* Gradient with accent */
+.gradient-accent {
+  background: linear-gradient(135deg, var(--accent-color), var(--accent-dark));
+}
+
+/* Progress bars and indicators */
+.progress-accent {
+  background-color: var(--accent-color);
+}
+
+/* Links with accent */
+a.accent-link {
+  color: var(--accent-color);
+}
+
+a.accent-link:hover {
+  color: var(--accent-dark);
+}
+
+/* Checkbox and radio with accent */
+input[type="checkbox"]:checked,
+input[type="radio"]:checked {
+  background-color: var(--accent-color) !important;
+  border-color: var(--accent-color) !important;
+}
+
+/* Switch/Toggle with accent */
+.toggle-accent:checked {
+  background-color: var(--accent-color);
+}
+
+/* Badge with accent */
+.badge-accent {
+  background-color: var(--accent-light);
+  color: var(--accent-color);
+}
+
+/* Tab active state */
+.tab-accent.active,
+.tab-accent[data-state="active"] {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+/* Pulse glow animation with accent */
+@keyframes pulse-glow-accent {
+  0%, 100% { opacity: 1; box-shadow: 0 0 20px rgba(var(--accent-rgb), 0.5); }
+  50% { opacity: 0.8; box-shadow: 0 0 10px rgba(var(--accent-rgb), 0.2); }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow-accent 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
 .animation-delay-2000 {
