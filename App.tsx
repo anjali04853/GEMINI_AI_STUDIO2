@@ -47,7 +47,13 @@ const AccessDeniedPage = React.lazy(() => import('./pages/AccessDeniedPage').the
 
 // Protected Route Component
 const ProtectedRoute = ({ children, requireAdmin = false }: { children?: React.ReactNode, requireAdmin?: boolean }) => {
-  const { user } = useAuthStore();
+  const { user, _hasHydrated } = useAuthStore();
+  
+  // Wait for hydration before making routing decisions
+  if (!_hasHydrated) {
+    return <Loading />;
+  }
+  
   if (!user) {
     return <Navigate to="/login" replace />;
   }
@@ -59,7 +65,16 @@ const ProtectedRoute = ({ children, requireAdmin = false }: { children?: React.R
 
 // Public Route Component (redirects to dashboard if logged in)
 const PublicRoute = ({ children }: { children?: React.ReactNode }) => {
-  const { user } = useAuthStore();
+  const { user, _hasHydrated } = useAuthStore();
+  
+  // Debug log
+  console.log('PublicRoute - hasHydrated:', _hasHydrated, 'user:', user);
+  
+  // Wait for hydration before making routing decisions
+  if (!_hasHydrated) {
+    return <Loading />;
+  }
+  
   if (user) {
     return <Navigate to="/dashboard" replace />;
   }
