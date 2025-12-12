@@ -5,7 +5,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from './ui/Card'
 
 const TOUR_STEPS = [
   {
-    title: "Welcome to GeminiApp",
+    title: "Welcome to SkillForge",
     description: "Your all-in-one platform for AI-powered skill assessment and interview preparation.",
   },
   {

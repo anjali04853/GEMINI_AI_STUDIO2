@@ -113,7 +113,7 @@ export const AdminSettingsPage = () => {
 const AdminProfileSettings = ({ user }: { user: any }) => {
   const [formData, setFormData] = useState({
     name: user?.name || 'Sarah Admin',
-    email: user?.email || 'admin@geminiapp.com',
+    email: user?.email || 'admin@skillforge.com',
     phone: '+1 234 567 8900',
     department: 'Platform Operations',
     adminId: 'ADM-2024-001',

@@ -196,7 +196,7 @@ export const ProgressReportPage = () => {
       
       {/* Footer */}
       <div className="mt-12 text-center border-t border-slate-200 pt-8">
-          <p className="text-slate-400 text-sm">Generated on {currentDate} • GeminiApp Platform</p>
+          <p className="text-slate-400 text-sm">Generated on {currentDate} • SkillForge Platform</p>
       </div>
 
     </div>

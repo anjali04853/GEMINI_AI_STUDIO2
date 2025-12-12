@@ -59,7 +59,7 @@ export const AdminProfilePage = () => {
               <p className="text-slate-300">Platform Administrator</p>
               <div className="flex items-center justify-center md:justify-start gap-2 mt-1 text-sm text-slate-400">
                 <Mail className="h-4 w-4" />
-                <span>{user?.email || 'admin@geminiapp.com'}</span>
+                <span>{user?.email || 'admin@skillforge.com'}</span>
                 <CheckCircle className="h-4 w-4 text-green-400" />
               </div>
               <div className="flex items-center justify-center md:justify-start gap-2 mt-1 text-sm text-slate-400">

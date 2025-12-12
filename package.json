@@ -6,13 +6,18 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "check-env": "node check-env.js",
+    "agent": "tsx agents/gemini-agent.ts start",
+    "agent:dev": "tsx agents/gemini-agent.ts dev"
   },
   "dependencies": {
     "@google/genai": "^1.32.0",
     "@hookform/resolvers": "^5.2.2",
     "clsx": "^2.1.1",
+    "livekit-client": "^2.16.1",
     "lucide-react": "^0.556.0",
+    "mime": "^4.1.0",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
     "react-hook-form": "^7.68.0",
@@ -28,6 +33,7 @@
     "autoprefixer": "^10.4.22",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.17",
+    "tsx": "^4.19.2",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"
   }

@@ -17,6 +17,7 @@ const ForgotPasswordPage = React.lazy(() => import('./pages/auth/ForgotPasswordP
 const ResetPasswordPage = React.lazy(() => import('./pages/auth/ResetPasswordPage').then(module => ({ default: module.ResetPasswordPage })));
 const Dashboard = React.lazy(() => import('./pages/Dashboard').then(module => ({ default: module.Dashboard })));
 const AIChatPage = React.lazy(() => import('./pages/AIChatPage').then(module => ({ default: module.AIChatPage })));
+const LiveKitVoicePage = React.lazy(() => import('./pages/LiveKitVoicePage').then(module => ({ default: module.LiveKitVoicePage })));
 const AssessmentListPage = React.lazy(() => import('./pages/assessments/AssessmentListPage').then(module => ({ default: module.AssessmentListPage })));
 const AssessmentPlayerPage = React.lazy(() => import('./pages/assessments/AssessmentPlayerPage').then(module => ({ default: module.AssessmentPlayerPage })));
 const AssessmentResultsPage = React.lazy(() => import('./pages/assessments/AssessmentResultsPage').then(module => ({ default: module.AssessmentResultsPage })));
@@ -148,6 +149,7 @@ const App = () => {
 
               {/* Utilities */}
               <Route path="chat" element={<Suspense fallback={<Loading />}><AIChatPage /></Suspense>} />
+              <Route path="voice-live" element={<Suspense fallback={<Loading />}><LiveKitVoicePage /></Suspense>} />
               <Route path="profile" element={<Suspense fallback={<Loading />}><ProfilePage /></Suspense>} />
               <Route path="settings" element={<Suspense fallback={<Loading />}><SettingsPage /></Suspense>} />
               

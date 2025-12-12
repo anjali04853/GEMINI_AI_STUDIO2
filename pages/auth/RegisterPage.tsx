@@ -210,7 +210,7 @@ export const RegisterPage = () => {
                     </div>
                     <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
                         <h1 className="text-2xl font-bold text-slate-900">Create an account</h1>
-                        <p className="mt-2 text-sm text-slate-500">Start your journey with GeminiApp today.</p>
+                        <p className="mt-2 text-sm text-slate-500">Start your journey with SkillForge today.</p>
                     </div>
                 </>
             )}

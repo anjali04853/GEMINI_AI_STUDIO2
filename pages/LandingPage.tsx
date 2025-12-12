@@ -14,7 +14,7 @@ export const LandingPage = () => {
               <div className="h-8 w-8 bg-brand-purple rounded-lg flex items-center justify-center">
                 <Bot className="h-5 w-5 text-white" />
               </div>
-              <span className="font-bold text-xl text-slate-900 tracking-tight">GeminiApp</span>
+              <span className="font-bold text-xl text-slate-900 tracking-tight">SkillForge</span>
             </div>
             <div className="flex items-center space-x-4">
               <Link to="/login">
@@ -119,7 +119,7 @@ export const LandingPage = () => {
       <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
            <div className="text-center mb-16">
-              <h2 className="text-3xl font-bold text-slate-900">Why GeminiApp?</h2>
+              <h2 className="text-3xl font-bold text-slate-900">Why SkillForge?</h2>
               <p className="mt-4 text-slate-600">Complete toolkit for your professional journey</p>
            </div>
            

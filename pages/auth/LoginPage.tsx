@@ -59,7 +59,7 @@ export const LoginPage = () => {
               <div className="h-8 w-8 bg-brand-purple rounded-lg flex items-center justify-center">
                 <Bot className="h-5 w-5 text-white" />
               </div>
-              <span className="font-bold text-xl tracking-tight text-slate-900">GeminiApp</span>
+              <span className="font-bold text-xl tracking-tight text-slate-900">SkillForge</span>
             </Link>
             <h1 className="text-3xl font-bold tracking-tight text-slate-900">Welcome back</h1>
             <p className="mt-2 text-slate-500">

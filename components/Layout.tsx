@@ -122,7 +122,7 @@ export const Layout = () => {
              </div>
              {!isSidebarCollapsed && (
                 <span className="text-xl font-bold tracking-tight animate-in fade-in duration-300 whitespace-nowrap text-slate-900 dark:text-white">
-                   Gemini<span className="text-brand-purple">App</span>
+                   Skill<span className="text-brand-purple">Forge</span>
                 </span>
              )}
           </div>
