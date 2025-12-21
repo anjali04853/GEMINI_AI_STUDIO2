@@ -30,7 +30,7 @@ npm install livekit-client
 ### 2. Connect to LiveKit Room
 
 ```typescript
-import { Room, RoomEvent } from 'livekit-client';
+import { Room, RoomEvent } from "livekit-client";
 
 const room = new Room({
   adaptiveStream: true,
@@ -43,8 +43,8 @@ const room = new Room({
 
 // Set up event listeners BEFORE connecting
 room.on(RoomEvent.Connected, async () => {
-  console.log('Connected to room:', room.name);
-  
+  console.log("Connected to room:", room.name);
+
   // Enable microphone
   await room.localParticipant.setMicrophoneEnabled(true);
 });
@@ -77,8 +77,8 @@ npm install @livekit/agents @livekit/agents-plugin-google
 ### 2. Create Gemini Agent
 
 ```typescript
-import * as google from '@livekit/agents-plugin-google';
-import { Agent, AgentSession } from '@livekit/agents';
+import * as google from "@livekit/agents-plugin-google";
+import { Agent, AgentSession } from "@livekit/agents";
 
 class GeminiVoiceAgent extends Agent {
   async handle() {
@@ -102,7 +102,7 @@ class GeminiVoiceAgent extends Agent {
 ### 3. Run the Agent
 
 ```typescript
-import { AgentServer } from '@livekit/agents';
+import { AgentServer } from "@livekit/agents";
 
 const server = new AgentServer();
 
@@ -119,7 +119,7 @@ await server.start();
 Generate tokens on your backend:
 
 ```typescript
-import { AccessToken } from 'livekit-server-sdk';
+import { AccessToken } from "livekit-server-sdk";
 
 const token = new AccessToken(apiKey, apiSecret, {
   identity: userId,
@@ -167,8 +167,8 @@ useEffect(() => {
 ```typescript
 room.on(RoomEvent.Connected, async () => {
   // Wait a bit for connection to stabilize
-  await new Promise(resolve => setTimeout(resolve, 100));
-  
+  await new Promise((resolve) => setTimeout(resolve, 100));
+
   // Then enable microphone
   await room.localParticipant.setMicrophoneEnabled(true);
 });
@@ -216,4 +216,6 @@ GOOGLE_API_KEY=your-google-api-key
 - [LiveKit Agents Docs](https://docs.livekit.io/agents/)
 - [Gemini Live API](https://ai.google.dev/gemini-api/docs/live)
 - [LiveKit Agents Google Plugin](https://docs.livekit.io/agents/models/realtime/plugins/gemini)
+
+
 

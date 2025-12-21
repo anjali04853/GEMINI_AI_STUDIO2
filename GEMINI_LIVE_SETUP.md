@@ -5,12 +5,14 @@ This project now uses **Google's Gemini Live API** directly via WebSockets, prov
 ## What Changed
 
 1. **New Service**: `services/geminiLiveService.ts`
+
    - Direct WebSocket connection to Gemini Live API
    - Handles audio streaming (16kHz input, 24kHz output)
    - Manages audio playback queue
    - Processes transcripts and audio chunks
 
 2. **New Component**: `components/voice/GeminiLiveVoice.tsx`
+
    - React component for voice interaction
    - Microphone capture using AudioContext
    - Real-time audio streaming to Gemini
@@ -65,16 +67,19 @@ VITE_GOOGLE_API_KEY=your_api_key_here
 ## Troubleshooting
 
 ### No audio playback
+
 - Check browser console for errors
 - Ensure your speakers/headphones are working
 - Try refreshing the page
 
 ### Microphone not working
+
 - Check browser permissions for microphone access
 - Ensure microphone is not muted in system settings
 - Try a different browser
 
 ### Connection errors
+
 - Verify `VITE_GEMINI_API_KEY` is set correctly
 - Check your internet connection
 - Ensure API key has access to Gemini Live API
@@ -90,4 +95,6 @@ VITE_GOOGLE_API_KEY=your_api_key_here
 - Implement session management for long conversations
 - Add support for ephemeral tokens (for production security)
 - Add tool/function calling capabilities
+
+
 

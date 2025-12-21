@@ -3,6 +3,7 @@
 ## Why You're Not Hearing Voice
 
 Your LiveKit connection is working perfectly! However, you need a **Gemini agent** running on the server side to:
+
 1. Join the same LiveKit room
 2. Listen to your microphone audio
 3. Process it with Gemini AI
@@ -17,6 +18,7 @@ npm install
 ```
 
 This will install:
+
 - `@livekit/agents` - LiveKit Agents framework
 - `@livekit/agents-plugin-google` - Google Gemini plugin
 - `tsx` - TypeScript execution (for running the agent)
@@ -48,6 +50,7 @@ npm run agent
 ```
 
 You should see:
+
 ```
 🤖 Agent entrypoint called: { room: 'room-...', participant: '...', jobId: '...' }
 🚀 Starting agent session...
@@ -117,4 +120,6 @@ Once the agent is running and you can hear responses:
 2. Add error handling and reconnection logic
 3. Implement features like transcript display
 4. Add visual indicators for when the agent is speaking
+
+
 
