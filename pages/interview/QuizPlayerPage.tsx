@@ -1,33 +1,64 @@
-
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { ChevronRight, ChevronLeft, Clock, AlertCircle, CheckCircle2, Send } from 'lucide-react';
 import { useInterviewStore } from '../../store/interviewStore';
+import { useSubmitQuiz } from '../../hooks/api/useInterviewsApi';
 import { Card, CardContent, CardFooter, CardHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { useToast } from '../../components/ui/Toast';
+import { getApiError } from '../../lib/api/client';
 import { cn } from '../../lib/utils';
 
 export const QuizPlayerPage = () => {
   const navigate = useNavigate();
-  const { addToast } = useToast();
+  const { showToast } = useToast();
   const [showSubmitModal, setShowSubmitModal] = useState(false);
-  
-  const { 
-    activeQuestions, 
-    currentQuestionIndex, 
-    activeConfig, 
-    answers, 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const submitQuizMutation = useSubmitQuiz();
+
+  const {
+    sessionId,
+    activeQuestions,
+    currentQuestionIndex,
+    activeConfig,
+    answers,
     isQuizActive,
     nextQuestion,
     prevQuestion,
     answerQuestion,
-    submitQuiz
+    finishQuiz,
   } = useInterviewStore();
 
   const [timeLeft, setTimeLeft] = useState(activeConfig?.timeLimit ? activeConfig.timeLimit * 60 : 0);
+
+  const handleSubmit = useCallback(async () => {
+    if (!sessionId || isSubmitting) return;
+    setIsSubmitting(true);
+
+    try {
+      await submitQuizMutation.mutateAsync({
+        sessionId,
+        data: { answers }
+      });
+
+      finishQuiz();
+      showToast({
+        title: 'Quiz submitted successfully! 🎉',
+        variant: 'success',
+      });
+      navigate(`/dashboard/interview/results?session=${sessionId}`);
+    } catch (error) {
+      setIsSubmitting(false);
+      const apiError = getApiError(error);
+      showToast({
+        title: 'Failed to submit quiz',
+        description: apiError.message,
+        variant: 'error',
+      });
+    }
+  }, [sessionId, isSubmitting, answers, submitQuizMutation, finishQuiz, showToast, navigate]);
 
   // Timer Effect
   useEffect(() => {
@@ -45,14 +76,8 @@ export const QuizPlayerPage = () => {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [activeConfig, isQuizActive]);
+  }, [activeConfig, isQuizActive, handleSubmit]);
 
-  const handleSubmit = () => {
-    const sessionId = submitQuiz();
-    addToast('Quiz submitted successfully! 🎉', 'success');
-    navigate(`/dashboard/interview/results?session=${sessionId}`);
-  };
-  
   const confirmSubmit = () => {
     setShowSubmitModal(false);
     handleSubmit();
@@ -105,10 +130,10 @@ export const QuizPlayerPage = () => {
         )}
         
         <div className="flex gap-3 pt-2">
-          <Button variant="secondary" onClick={() => setShowSubmitModal(false)} className="flex-1">
+          <Button variant="secondary" onClick={() => setShowSubmitModal(false)} className="flex-1" disabled={isSubmitting}>
             Continue Quiz
           </Button>
-          <Button onClick={confirmSubmit} className="flex-1 bg-brand-pink hover:bg-pink-600">
+          <Button onClick={confirmSubmit} className="flex-1 bg-brand-pink hover:bg-pink-600" isLoading={isSubmitting} disabled={isSubmitting}>
             <Send className="h-4 w-4 mr-2" />
             Submit Quiz
           </Button>

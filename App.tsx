@@ -1,5 +1,8 @@
 import React, { Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import { queryClient } from './lib/query/queryClient';
 import { useAuthStore } from './store/authStore';
 import { Layout } from './components/Layout';
 import { Loading, FullPageLoading } from './components/Loading';
@@ -88,13 +91,14 @@ const PublicRoute = ({ children }: { children?: React.ReactNode }) => {
 const App = () => {
   return (
     <ErrorBoundary>
-      <ThemeProvider>
-        <ToastProvider>
-          <Suspense fallback={<FullPageLoading />}>
-            <BrowserRouter>
-            <OfflineIndicator />
-            <OnboardingTour />
-          <Routes>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <ToastProvider>
+            <Suspense fallback={<FullPageLoading />}>
+              <BrowserRouter>
+                <OfflineIndicator />
+                <OnboardingTour />
+                <Routes>
             {/* Public Routes */}
             <Route path="/" element={<PublicRoute><Suspense fallback={<Loading />}><LandingPage /></Suspense></PublicRoute>} />
             <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
@@ -161,13 +165,15 @@ const App = () => {
               <Route path="*" element={<Suspense fallback={<Loading />}><NotFoundPage /></Suspense>} />
             </Route>
 
-            {/* Fallback for unauthenticated strict 404s outside dashboard */}
-             <Route path="*" element={<Navigate to="/login" replace />} />
-          </Routes>
-            </BrowserRouter>
-          </Suspense>
-        </ToastProvider>
-      </ThemeProvider>
+                  {/* Fallback for unauthenticated strict 404s outside dashboard */}
+                  <Route path="*" element={<Navigate to="/login" replace />} />
+                </Routes>
+              </BrowserRouter>
+            </Suspense>
+          </ToastProvider>
+        </ThemeProvider>
+        <ReactQueryDevtools initialIsOpen={false} />
+      </QueryClientProvider>
     </ErrorBoundary>
   );
 };

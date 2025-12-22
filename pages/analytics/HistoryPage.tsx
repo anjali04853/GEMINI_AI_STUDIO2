@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { 
-  Search, 
+import {
+  Search,
   ChevronLeft,
   Calendar,
   Clock,
@@ -13,25 +13,35 @@ import {
   Bot,
   Mic,
   MessageSquare,
-  Award
+  Award,
+  Loader2
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
-import { useAnalytics } from '../../hooks/useAnalytics';
+import { useActivityHistory } from '../../hooks/api/useAnalyticsApi';
 import { cn } from '../../lib/utils';
 import { Tooltip } from '../../components/ui/Tooltip';
+import { Skeleton } from '../../components/ui/Skeleton';
 
 export const HistoryPage = () => {
-  const { recentHistory } = useAnalytics();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('All');
+  const [page, setPage] = useState(1);
 
-  const filtered = recentHistory.filter((item: any) => {
-    const matchesSearch = item.type.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          (item.config?.topic || '').toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesFilter = filterType === 'All' || item.type === filterType;
-    return matchesSearch && matchesFilter;
+  const { data: historyData, isLoading, error } = useActivityHistory({
+    type: filterType !== 'All' ? filterType : undefined,
+    limit: 10,
+    offset: (page - 1) * 10,
+  });
+
+  const activities = historyData?.activities || [];
+
+  // Filter by search term (client-side filtering for search)
+  const filtered = activities.filter((item: any) => {
+    const matchesSearch = item.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          (item.title || '').toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesSearch;
   });
 
   const types = ['All', 'Technical Quiz', 'Assessment', 'Text Interview', 'Voice Interview', 'Bot Interview'];
@@ -97,14 +107,35 @@ export const HistoryPage = () => {
 
       {/* Session List */}
       <div className="space-y-4">
-        {filtered.length > 0 ? (
-            filtered.map((item: any, i) => {
+        {isLoading ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="bg-white rounded-xl p-5 flex gap-6 items-center">
+                  <Skeleton className="w-12 h-12 rounded-full" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-5 w-1/3" />
+                    <Skeleton className="h-3 w-1/4" />
+                  </div>
+                  <Skeleton className="h-14 w-14 rounded-full" />
+                </div>
+              ))}
+            </div>
+        ) : error ? (
+            <div className="text-center py-20 bg-white rounded-xl border-2 border-dashed border-red-200">
+                <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Activity className="h-8 w-8 text-red-300" />
+                </div>
+                <h3 className="text-lg font-medium text-slate-900">Failed to load history</h3>
+                <p className="text-slate-500">Please try again later.</p>
+            </div>
+        ) : filtered.length > 0 ? (
+            filtered.map((item: any) => {
                 const style = getModeStyles(item.type);
                 const score = item.score !== undefined ? item.score : 0;
-                
+
                 return (
-                    <div 
-                        key={i} 
+                    <div
+                        key={item.id}
                         className={cn(
                             "bg-white rounded-xl shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 border-l-[6px] p-5 flex flex-col md:flex-row gap-6 md:items-center group",
                             style.border
@@ -117,12 +148,12 @@ export const HistoryPage = () => {
                             </div>
                             <div>
                                 <h3 className="font-bold text-slate-900 text-lg leading-tight">
-                                    {item.config?.topic || item.activeAssessment?.title || (item.config?.types ? item.config.types.join(', ') : 'Practice Session')}
+                                    {item.title || 'Practice Session'}
                                 </h3>
                                 <div className="flex items-center gap-2 mt-1 text-xs font-medium text-slate-400 uppercase tracking-wider">
                                     <span>{item.type}</span>
                                     <span>•</span>
-                                    <span>{new Date(item.timestamp).toLocaleDateString()}</span>
+                                    <span>{new Date(item.completedAt).toLocaleDateString()}</span>
                                 </div>
                             </div>
                         </div>
@@ -138,19 +169,19 @@ export const HistoryPage = () => {
                                 </div>
                                 <span className="text-[10px] text-slate-400 uppercase font-bold">Score</span>
                             </div>
-                            
+
                             <div className="text-center">
                                 <Clock className="h-5 w-5 text-slate-300 mx-auto mb-1" />
                                 <span className="text-sm font-bold text-slate-700">
-                                    {item.durationSeconds ? `${Math.floor(item.durationSeconds/60)}m` : '15m'}
+                                    {item.duration ? `${Math.floor(item.duration / 60)}m` : '15m'}
                                 </span>
                                 <div className="text-[10px] text-slate-400 uppercase font-bold">Duration</div>
                             </div>
-                            
+
                             <div className="text-center hidden sm:block">
                                 <Award className="h-5 w-5 text-slate-300 mx-auto mb-1" />
                                 <span className="text-sm font-bold text-slate-700">
-                                    {item.totalQuestions || item.questions?.length || 5}
+                                    {item.questionCount || 5}
                                 </span>
                                 <div className="text-[10px] text-slate-400 uppercase font-bold">Questions</div>
                             </div>
@@ -159,12 +190,12 @@ export const HistoryPage = () => {
                         {/* Actions Footer (Right aligned on desktop) */}
                         <div className="flex items-center justify-end gap-2 md:w-auto pt-2 md:pt-0 border-t md:border-t-0 border-slate-100">
                              <Tooltip content="View Results">
-                                <Link 
+                                <Link
                                     to={
-                                        item.type === 'Technical Quiz' ? `/dashboard/interview/results?session=${item.id}` :
-                                        item.type === 'Assessment' ? `/dashboard/assessments/${item.assessmentId}/results` : 
-                                        item.type === 'Text Interview' ? `/dashboard/interview/text/results?session=${item.id}` :
-                                        item.type === 'Voice Interview' ? `/dashboard/interview/voice/results?session=${item.id}` :
+                                        item.type === 'quiz' ? `/dashboard/interview/results?session=${item.id}` :
+                                        item.type === 'assessment' ? `/dashboard/assessments/${item.assessmentId}/results` :
+                                        item.type === 'text-interview' ? `/dashboard/interview/text/results?session=${item.id}` :
+                                        item.type === 'voice-interview' ? `/dashboard/interview/voice/results?session=${item.id}` :
                                         `/dashboard/interview/bot/results?session=${item.id}`
                                     }
                                 >
@@ -174,7 +205,7 @@ export const HistoryPage = () => {
                                     </Button>
                                 </Link>
                              </Tooltip>
-                             
+
                              <div className="h-6 w-px bg-slate-200 mx-1"></div>
 
                              <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-brand-sky">

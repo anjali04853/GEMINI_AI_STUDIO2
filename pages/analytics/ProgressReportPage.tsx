@@ -1,28 +1,39 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  ArrowLeft, 
-  Download, 
-  Share2, 
-  Award, 
-  TrendingUp, 
-  Target, 
-  CheckCircle2, 
+import {
+  ArrowLeft,
+  Download,
+  Share2,
+  Award,
+  TrendingUp,
+  Target,
+  CheckCircle2,
   Circle,
-  AlertCircle
+  AlertCircle,
+  Loader2
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { SimpleRadarChart } from '../../components/analytics/AnalyticsCharts';
-import { useAnalytics } from '../../hooks/useAnalytics';
+import { useSkillsData, useAnalyticsReport } from '../../hooks/api/useAnalyticsApi';
 import { Badge } from '../../components/ui/Badge';
 import { cn } from '../../lib/utils';
+import { Skeleton } from '../../components/ui/Skeleton';
 
 export const ProgressReportPage = () => {
-  const { skillData } = useAnalytics();
+  const { data: skillsData, isLoading: skillsLoading } = useSkillsData();
+  const { data: reportData, isLoading: reportLoading } = useAnalyticsReport();
   const currentDate = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
-  // Mock Previous Skill Data for comparison
+  const isLoading = skillsLoading || reportLoading;
+
+  // Transform skills data for radar chart
+  const skillData = skillsData?.skills?.map(skill => ({
+    subject: skill.name,
+    value: skill.score
+  })) || [];
+
+  // Generate previous skill data for comparison (in real app, this would come from API)
   const previousSkillData = skillData.map(s => ({ ...s, value: Math.max(10, s.value - Math.floor(Math.random() * 20)) }));
 
   const milestones = [

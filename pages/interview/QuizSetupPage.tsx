@@ -1,10 +1,12 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Play, Check, BarChart3, Clock, Layers } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { useInterviewStore } from '../../store/interviewStore';
+import { useStartQuiz } from '../../hooks/api/useInterviewsApi';
+import { useToast } from '../../components/ui/Toast';
+import { getApiError } from '../../lib/api/client';
 import { InterviewDifficulty } from '../../types';
 import { cn } from '../../lib/utils';
 
@@ -13,7 +15,9 @@ const DIFFICULTIES: InterviewDifficulty[] = ['Easy', 'Medium', 'Hard'];
 
 export const QuizSetupPage = () => {
   const navigate = useNavigate();
-  const startQuiz = useInterviewStore(state => state.startQuiz);
+  const { showToast } = useToast();
+  const setActiveQuiz = useInterviewStore(state => state.setActiveQuiz);
+  const startQuizMutation = useStartQuiz();
 
   const [selectedTopics, setSelectedTopics] = useState<string[]>(['React']);
   const [difficulty, setDifficulty] = useState<InterviewDifficulty>('Medium');
@@ -21,24 +25,51 @@ export const QuizSetupPage = () => {
   const [timeLimit, setTimeLimit] = useState(0); // 0 = unlimited
 
   const toggleTopic = (topic: string) => {
-    setSelectedTopics(prev => 
-      prev.includes(topic) 
+    setSelectedTopics(prev =>
+      prev.includes(topic)
         ? prev.filter(t => t !== topic)
         : [...prev, topic]
     );
   };
 
-  const handleStart = () => {
+  const handleStart = async () => {
     if (selectedTopics.length === 0) return;
-    
-    startQuiz({
+
+    const config = {
       topics: selectedTopics,
       difficulty,
       questionCount,
       timeLimit
-    });
-    
-    navigate('/dashboard/interview/quiz');
+    };
+
+    try {
+      const session = await startQuizMutation.mutateAsync({
+        topics: selectedTopics,
+        difficulty,
+        questionCount,
+        timeLimit,
+      });
+
+      // Transform API questions to local format and set in store
+      const questions = session.questions.map((q: any) => ({
+        id: q.id,
+        text: q.text,
+        options: q.options,
+        correctOptionIndex: q.correctOptionIndex,
+        topic: q.topic || selectedTopics[0],
+        explanation: q.explanation,
+      }));
+
+      setActiveQuiz(session.sessionId, config, questions);
+      navigate('/dashboard/interview/quiz');
+    } catch (error) {
+      const apiError = getApiError(error);
+      showToast({
+        title: 'Failed to start quiz',
+        description: apiError.message,
+        variant: 'error',
+      });
+    }
   };
 
   const getDifficultyColor = (diff: string) => {
@@ -141,10 +172,10 @@ export const QuizSetupPage = () => {
               </div>
             </div>
             <div className="relative pt-2">
-                <input 
-                type="range" 
-                min="3" 
-                max="20" 
+                <input
+                type="range"
+                min="5"
+                max="20"
                 step="1"
                 value={questionCount}
                 onChange={(e) => setQuestionCount(parseInt(e.target.value))}
@@ -181,10 +212,11 @@ export const QuizSetupPage = () => {
 
         </CardContent>
         <CardFooter className="p-8 pt-0">
-          <Button 
-            className="w-full h-14 text-lg uppercase tracking-wide font-bold bg-gradient-to-r from-brand-turquoise to-teal-400 hover:from-teal-400 hover:to-brand-turquoise shadow-lg shadow-brand-turquoise/30 hover:scale-[1.02] transition-all rounded-xl" 
+          <Button
+            className="w-full h-14 text-lg uppercase tracking-wide font-bold bg-gradient-to-r from-brand-turquoise to-teal-400 hover:from-teal-400 hover:to-brand-turquoise shadow-lg shadow-brand-turquoise/30 hover:scale-[1.02] transition-all rounded-xl"
             onClick={handleStart}
-            disabled={selectedTopics.length === 0}
+            disabled={selectedTopics.length === 0 || startQuizMutation.isPending}
+            isLoading={startQuizMutation.isPending}
           >
             Start Quiz
             <ArrowLeft className="ml-2 h-5 w-5 rotate-180" />

@@ -3,14 +3,23 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../../store/authStore';
+import { useLogin } from '../../hooks/api/useAuthApi';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { Bot, Shield, ArrowRight } from 'lucide-react';
+import { Bot, Shield, ArrowRight, Building2 } from 'lucide-react';
+import { useToast } from '../../components/ui/Toast';
+import { getApiError } from '../../lib/api/client';
+
+const ORGANIZATIONS = [
+  { value: 'AI Skills Lab', label: 'AI Skills Lab' },
+  { value: 'AI Tools Hub', label: 'AI Tools Hub' },
+  { value: 'Test My Skills', label: 'Test My Skills' },
+];
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
+  organizationName: z.string().min(1, 'Please select an organization'),
   rememberMe: z.boolean().optional(),
 });
 
@@ -18,35 +27,40 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 export const LoginPage = () => {
   const navigate = useNavigate();
-  const login = useAuthStore((state) => state.login);
-  const [isLoading, setIsLoading] = React.useState(false);
+  const { showToast } = useToast();
+  const loginMutation = useLogin();
 
   const { register, handleSubmit, formState: { errors } } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      rememberMe: false
+      rememberMe: false,
+      organizationName: ORGANIZATIONS[0].value,
     }
   });
 
   const onSubmit = async (data: LoginFormValues) => {
-    setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      const isAdmin = data.email === 'admin@example.com';
-      login(
-        { 
-          id: isAdmin ? '1' : '2', 
-          name: isAdmin ? 'Admin User' : 'Demo User', 
-          email: data.email,
-          role: isAdmin ? 'admin' : 'user',
-          status: 'active',
-          joinedAt: Date.now()
-        },
-        'fake-jwt-token'
-      );
-      setIsLoading(false);
-      navigate(isAdmin ? '/admin' : '/dashboard');
-    }, 1000);
+    try {
+      const result = await loginMutation.mutateAsync({
+        email: data.email,
+        password: data.password,
+        organizationName: data.organizationName,
+      });
+
+      showToast({
+        title: 'Welcome back!',
+        description: `Signed in as ${result.user.email}`,
+        variant: 'success'
+      });
+
+      navigate(result.user.role === 'admin' ? '/dashboard/admin' : '/dashboard');
+    } catch (error) {
+      const apiError = getApiError(error);
+      showToast({
+        title: 'Login failed',
+        description: apiError.message,
+        variant: 'error'
+      });
+    }
   };
 
   return (
@@ -69,6 +83,27 @@ export const LoginPage = () => {
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Organization
+                </label>
+                <div className="relative">
+                  <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
+                  <select
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-900 focus:ring-2 focus:ring-brand-purple focus:border-transparent transition-all appearance-none cursor-pointer"
+                    {...register('organizationName')}
+                  >
+                    {ORGANIZATIONS.map((org) => (
+                      <option key={org.value} value={org.value}>
+                        {org.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {errors.organizationName && (
+                  <p className="mt-1 text-sm text-red-500">{errors.organizationName.message}</p>
+                )}
+              </div>
               <Input
                 label="Email"
                 type="email"
@@ -107,15 +142,14 @@ export const LoginPage = () => {
               </div>
             </div>
 
-            <Button type="submit" className="w-full" isLoading={isLoading} size="lg">
+            <Button type="submit" className="w-full" isLoading={loginMutation.isPending} size="lg">
               Sign In <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
 
             <div className="bg-brand-lavender/50 p-4 rounded-xl border border-brand-purple/10 flex items-start gap-3">
               <Shield className="h-5 w-5 text-brand-purple mt-0.5 flex-shrink-0" />
               <div className="text-sm text-slate-700">
-                <p><strong>Admin:</strong> admin@example.com</p>
-                <p><strong>User:</strong> any other email</p>
+                <p>Sign in with your registered account to access the platform.</p>
               </div>
             </div>
           </form>

@@ -10,16 +10,18 @@ interface AssessmentState {
 
   // Active State
   activeAssessment: Assessment | null;
+  sessionId: string | null; // API session ID
   currentQuestionIndex: number;
   responses: Record<string, string | number | string[]>; // questionId -> answer
   flaggedQuestions: string[];
   isFinished: boolean;
-  
+
   // Timer State
   timeRemaining: number; // in seconds
   timerStarted: number | null; // timestamp when started
-  
+
   startAssessment: (assessment: Assessment) => void;
+  setActiveAssessment: (assessment: Assessment, sessionId: string) => void;
   submitAnswer: (questionId: string, answer: string | number | string[]) => void;
   toggleFlag: (questionId: string) => void;
   nextQuestion: () => void;
@@ -27,7 +29,7 @@ interface AssessmentState {
   finishAssessment: () => void;
   resetAssessment: () => void;
   updateTimer: (seconds: number) => void;
-  
+
   // Computed helpers
   getProgress: () => number;
   isFlagged: (questionId: string) => boolean;
@@ -38,6 +40,7 @@ export const useAssessmentStore = create<AssessmentState>()(
     (set, get) => ({
       history: [],
       activeAssessment: null,
+      sessionId: null,
       currentQuestionIndex: 0,
       responses: {},
       flaggedQuestions: [],
@@ -47,6 +50,18 @@ export const useAssessmentStore = create<AssessmentState>()(
 
       startAssessment: (assessment) => set({
         activeAssessment: assessment,
+        sessionId: null,
+        currentQuestionIndex: 0,
+        responses: {},
+        flaggedQuestions: [],
+        isFinished: false,
+        timeRemaining: assessment.durationMinutes * 60,
+        timerStarted: Date.now()
+      }),
+
+      setActiveAssessment: (assessment, sessionId) => set({
+        activeAssessment: assessment,
+        sessionId,
         currentQuestionIndex: 0,
         responses: {},
         flaggedQuestions: [],
@@ -138,6 +153,7 @@ export const useAssessmentStore = create<AssessmentState>()(
 
       resetAssessment: () => set({
         activeAssessment: null,
+        sessionId: null,
         currentQuestionIndex: 0,
         responses: {},
         flaggedQuestions: [],

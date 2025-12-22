@@ -1,22 +1,35 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/Card';
 import { useAuthStore } from '../store/authStore';
-import { Activity, CreditCard, DollarSign, Users, Brain, Mic, BarChart, Trophy, ArrowUpRight } from 'lucide-react';
+import { Activity, Brain, Mic, Trophy, ArrowUpRight } from 'lucide-react';
 import { OnboardingTour } from '../components/OnboardingTour';
 import { Skeleton } from '../components/ui/Skeleton';
-import { Tooltip } from '../components/ui/Tooltip';
 import { cn } from '../lib/utils';
 import { Link } from 'react-router-dom';
+import { useAnalyticsSummary, useActivityHistory } from '../hooks/api/useAnalyticsApi';
+
+// Helper function to format timestamps as relative time
+const formatTimeAgo = (timestamp: string | number): string => {
+  const now = Date.now();
+  const date = typeof timestamp === 'string' ? new Date(timestamp).getTime() : timestamp;
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return new Date(date).toLocaleDateString();
+};
 
 export const Dashboard = () => {
   const { user } = useAuthStore();
-  const [isLoading, setIsLoading] = useState(true);
+  const { data: summary, isLoading: summaryLoading } = useAnalyticsSummary();
+  const { data: historyData, isLoading: historyLoading } = useActivityHistory({ limit: 3 });
 
-  // Simulate loading delay for dashboard data
-  useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 800);
-    return () => clearTimeout(timer);
-  }, []);
+  const isLoading = summaryLoading || historyLoading;
 
   const themeClasses = {
     purple: "border-t-4 border-accent hover:shadow-accent/10",
@@ -34,33 +47,33 @@ export const Dashboard = () => {
 
   const stats = [
     {
-      title: "Assessments",
-      value: "4 Completed",
-      description: "Top 15% in React",
+      title: "Total Activities",
+      value: summary ? `${summary.totalActivities} Completed` : "0 Completed",
+      description: `Avg Score: ${summary?.averageScore?.toFixed(0) || 0}%`,
       icon: Brain,
       theme: "purple" as const,
       link: "/dashboard/assessments"
     },
     {
-      title: "Interview Prep",
-      value: "12 Sessions",
-      description: "Avg Score: 85%",
+      title: "Practice Time",
+      value: summary?.totalHours || "0h",
+      description: `${summary?.sessionsThisWeek || 0} sessions this week`,
       icon: Mic,
       theme: "pink" as const,
       link: "/dashboard/interview"
     },
     {
-      title: "Skills Growth",
-      value: "+24%",
-      description: "Since last month",
+      title: "Average Score",
+      value: `${summary?.averageScore?.toFixed(0) || 0}%`,
+      description: "Across all activities",
       icon: Trophy,
       theme: "turquoise" as const,
       link: "/dashboard/analytics"
     },
     {
       title: "Active Streak",
-      value: "5 Days",
-      description: "Keep it up!",
+      value: `${summary?.streakDays || 0} Days`,
+      description: summary?.streakDays ? "Keep it up!" : "Start practicing!",
       icon: Activity,
       theme: "sky" as const,
       link: "/dashboard/analytics"
@@ -143,25 +156,42 @@ export const Dashboard = () => {
                     </div>
                   ))}
                </div>
-            ) : (
+            ) : historyData?.activities && historyData.activities.length > 0 ? (
               <div className="space-y-6">
-                {[
-                    { title: "React Assessment", desc: "Completed with 92% score", time: "2h ago", icon: Brain, color: "bg-accent-light text-accent" },
-                    { title: "Voice Practice", desc: "Recorded 'Tell me about yourself'", time: "5h ago", icon: Mic, color: "bg-orange-100 dark:bg-orange-900/20 text-orange-600" },
-                    { title: "System Design Quiz", desc: "Attempted 10 questions", time: "1d ago", icon: Activity, color: "bg-blue-100 dark:bg-blue-900/20 text-blue-600" }
-                ].map((item, i) => (
-                  <div key={i} className="flex items-center group p-2 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg transition-colors">
-                    <div className={cn("h-10 w-10 rounded-full flex items-center justify-center mr-4 shadow-sm", item.color)}>
-                      <item.icon className="h-5 w-5" />
+                {historyData.activities.map((activity) => {
+                  const getActivityIcon = (type: string) => {
+                    switch (type) {
+                      case 'assessment': return { icon: Brain, color: "bg-accent-light text-accent" };
+                      case 'voice-interview': return { icon: Mic, color: "bg-orange-100 dark:bg-orange-900/20 text-orange-600" };
+                      case 'quiz': return { icon: Activity, color: "bg-blue-100 dark:bg-blue-900/20 text-blue-600" };
+                      default: return { icon: Activity, color: "bg-slate-100 dark:bg-slate-700 text-slate-600" };
+                    }
+                  };
+                  const { icon: IconComponent, color } = getActivityIcon(activity.type);
+                  const timeAgo = formatTimeAgo(activity.completedAt);
+
+                  return (
+                    <div key={activity.id} className="flex items-center group p-2 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg transition-colors">
+                      <div className={cn("h-10 w-10 rounded-full flex items-center justify-center mr-4 shadow-sm", color)}>
+                        <IconComponent className="h-5 w-5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{activity.title}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                          {activity.score ? `Completed with ${activity.score}% score` : activity.description || 'Completed'}
+                        </p>
+                      </div>
+                      <div className="ml-auto text-xs text-slate-400 font-medium">{timeAgo}</div>
+                      <ArrowUpRight className="h-4 w-4 text-slate-300 dark:text-slate-600 ml-2 opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{item.title}</p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{item.desc}</p>
-                    </div>
-                    <div className="ml-auto text-xs text-slate-400 font-medium">{item.time}</div>
-                    <ArrowUpRight className="h-4 w-4 text-slate-300 dark:text-slate-600 ml-2 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </div>
-                ))}
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-slate-500 dark:text-slate-400">
+                <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">No recent activity</p>
+                <p className="text-xs mt-1">Start an assessment or interview to see your progress here</p>
               </div>
             )}
           </CardContent>

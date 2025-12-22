@@ -1,37 +1,82 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Filter, Sparkles, Clock, BarChart, CheckCircle, AlertCircle } from 'lucide-react';
+import { Search, Filter, Sparkles, Clock, BarChart, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { Input } from '../../components/ui/Input';
 import { AssessmentCard } from '../../components/assessment/AssessmentCard';
-import { mockAssessments } from '../../data/mockAssessments';
+import { useAssessmentsList, useStartAssessment } from '../../hooks/api/useAssessmentsApi';
 import { useAssessmentStore } from '../../store/assessmentStore';
 import { Assessment } from '../../types';
 import { cn } from '../../lib/utils';
 import { Modal } from '../../components/ui/Modal';
 import { Button } from '../../components/ui/Button';
+import { useToast } from '../../components/ui/Toast';
+import { getApiError } from '../../lib/api/client';
+import type { AssessmentListItem } from '../../lib/api/types';
+
+// Convert API response to local Assessment type
+const mapApiToAssessment = (item: AssessmentListItem): Assessment => ({
+  id: item.id,
+  title: item.title,
+  description: item.description,
+  durationMinutes: item.durationMinutes,
+  category: item.category,
+  difficulty: item.difficulty,
+  questions: [], // Questions are loaded when starting assessment
+});
 
 export const AssessmentListPage = () => {
   const navigate = useNavigate();
-  const startAssessment = useAssessmentStore(state => state.startAssessment);
+  const { showToast } = useToast();
+  const setActiveAssessment = useAssessmentStore(state => state.setActiveAssessment);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
-  const [selectedAssessment, setSelectedAssessment] = useState<Assessment | null>(null);
+  const [selectedAssessment, setSelectedAssessment] = useState<AssessmentListItem | null>(null);
+
+  const { data: assessmentsData, isLoading, error } = useAssessmentsList({
+    category: activeFilter !== 'All' ? activeFilter : undefined,
+  });
+  const startAssessmentMutation = useStartAssessment();
 
   const handleStart = (assessment: Assessment) => {
-    setSelectedAssessment(assessment);
+    const apiAssessment = assessmentsData?.assessments?.find(a => a.id === assessment.id);
+    if (apiAssessment) {
+      setSelectedAssessment(apiAssessment);
+    }
   };
-  
-  const confirmStart = () => {
-    if (selectedAssessment) {
-      startAssessment(selectedAssessment);
+
+  const confirmStart = async () => {
+    if (!selectedAssessment) return;
+
+    try {
+      const session = await startAssessmentMutation.mutateAsync(selectedAssessment.id);
+
+      // Store session info in the assessment store for the player page
+      setActiveAssessment({
+        ...mapApiToAssessment(selectedAssessment),
+        questions: session.questions.map(q => ({
+          id: q.id,
+          type: q.type as Assessment['questions'][0]['type'],
+          text: q.text,
+          options: q.options,
+        })),
+      }, session.sessionId);
+
       navigate(`/dashboard/assessments/${selectedAssessment.id}`);
+    } catch (error) {
+      const apiError = getApiError(error);
+      showToast({
+        title: 'Failed to start assessment',
+        description: apiError.message,
+        variant: 'error',
+      });
     }
   };
 
   const categories = ['All', 'Technical', 'Soft Skills', 'Leadership'];
 
-  const filteredAssessments = mockAssessments.filter(a => {
-    const matchesSearch = a.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+  const assessments = assessmentsData?.assessments || [];
+  const filteredAssessments = assessments.filter(a => {
+    const matchesSearch = a.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           a.category.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = activeFilter === 'All' || a.category.includes(activeFilter);
     return matchesSearch && matchesFilter;
@@ -61,7 +106,7 @@ export const AssessmentListPage = () => {
             </div>
             <div className="p-4 bg-slate-50 rounded-xl text-center">
               <BarChart className="h-5 w-5 text-brand-turquoise mx-auto mb-2" />
-              <p className="text-sm font-bold text-slate-900">{selectedAssessment.questions.length}</p>
+              <p className="text-sm font-bold text-slate-900">{selectedAssessment.questionCount}</p>
               <p className="text-xs text-slate-500">Questions</p>
             </div>
             <div className="p-4 bg-slate-50 rounded-xl text-center">
@@ -87,10 +132,10 @@ export const AssessmentListPage = () => {
           </div>
           
           <div className="flex gap-3">
-            <Button variant="secondary" onClick={() => setSelectedAssessment(null)} className="flex-1">
+            <Button variant="secondary" onClick={() => setSelectedAssessment(null)} className="flex-1" disabled={startAssessmentMutation.isPending}>
               Cancel
             </Button>
-            <Button onClick={confirmStart} className="flex-1">
+            <Button onClick={confirmStart} className="flex-1" isLoading={startAssessmentMutation.isPending}>
               Start Now
             </Button>
           </div>
@@ -154,12 +199,28 @@ export const AssessmentListPage = () => {
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {filteredAssessments.length > 0 ? (
+          {isLoading ? (
+            <div className="col-span-full py-20 text-center">
+              <Loader2 className="h-8 w-8 animate-spin text-brand-purple mx-auto mb-4" />
+              <p className="text-slate-500">Loading assessments...</p>
+            </div>
+          ) : error ? (
+            <div className="col-span-full py-20 text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 mb-4">
+                <AlertCircle className="h-8 w-8 text-red-500" />
+              </div>
+              <h3 className="text-lg font-medium text-slate-900">Failed to load assessments</h3>
+              <p className="text-slate-500 mt-1">Please try again later.</p>
+            </div>
+          ) : filteredAssessments.length > 0 ? (
             filteredAssessments.map((assessment) => (
-              <AssessmentCard 
-                key={assessment.id} 
-                assessment={assessment} 
-                onStart={handleStart} 
+              <AssessmentCard
+                key={assessment.id}
+                assessment={{
+                  ...mapApiToAssessment(assessment),
+                  questions: Array(assessment.questionCount).fill({ id: '', type: 'multiple-choice', text: '' }),
+                }}
+                onStart={handleStart}
               />
             ))
           ) : (

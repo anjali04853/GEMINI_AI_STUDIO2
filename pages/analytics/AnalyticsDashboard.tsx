@@ -1,32 +1,45 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  BarChart2, 
-  Activity, 
-  Clock, 
-  Target, 
-  TrendingUp, 
+import {
+  BarChart2,
+  Activity,
+  Clock,
+  Target,
+  TrendingUp,
   Award,
   Calendar,
   ArrowRight,
   Flame,
-  FileText
+  FileText,
+  Loader2
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { useAnalytics } from '../../hooks/useAnalytics';
+import { useAnalyticsSummary, useSkillsData, useActivityData } from '../../hooks/api/useAnalyticsApi';
 import { SimpleBarChart, SimpleRadarChart, SimpleTrendChart, HorizontalBarChart, DonutChart } from '../../components/analytics/AnalyticsCharts';
 import { cn } from '../../lib/utils';
 import { Tooltip } from '../../components/ui/Tooltip';
+import { Skeleton } from '../../components/ui/Skeleton';
 
 export const AnalyticsDashboard = () => {
-  const { 
-    totalActivities, 
-    averageScore, 
-    totalHours, 
-    activityData, 
-    skillData,
-  } = useAnalytics();
+  const { data: summary, isLoading: summaryLoading } = useAnalyticsSummary();
+  const { data: skillsData, isLoading: skillsLoading } = useSkillsData();
+  const { data: activityData, isLoading: activityLoading } = useActivityData({ days: 7 });
+
+  const isLoading = summaryLoading || skillsLoading || activityLoading;
+
+  // Extract values from API response with fallbacks
+  const totalActivities = summary?.totalActivities || 0;
+  const averageScore = summary?.averageScore || 0;
+  const totalHours = summary?.totalHours || '0';
+  const streakDays = summary?.streakDays || 0;
+  const improvement = summary?.improvement || 0;
+
+  // Transform skills data for radar chart
+  const skillData = skillsData?.skills?.map(skill => ({
+    subject: skill.name,
+    value: skill.score
+  })) || [];
 
   // Mock data for new charts
   const trendData = [65, 68, 72, 70, 75, 78, 82, 85, 84, 88];
@@ -106,10 +119,16 @@ export const AnalyticsDashboard = () => {
             <div>
               <p className="text-sm font-medium text-slate-500 uppercase tracking-wide">Improvement</p>
               <div className="flex items-center">
-                 <h3 className="text-2xl font-black text-slate-900">+12%</h3>
-                 <span className="ml-2 text-xs font-bold text-green-600 bg-green-100 px-1.5 py-0.5 rounded flex items-center">
-                    <ArrowRight className="h-3 w-3 -rotate-45 mr-0.5" /> This Week
-                 </span>
+                 {isLoading ? (
+                   <Skeleton className="h-8 w-16" />
+                 ) : (
+                   <>
+                     <h3 className="text-2xl font-black text-slate-900">{improvement >= 0 ? '+' : ''}{improvement}%</h3>
+                     <span className="ml-2 text-xs font-bold text-green-600 bg-green-100 px-1.5 py-0.5 rounded flex items-center">
+                        <ArrowRight className="h-3 w-3 -rotate-45 mr-0.5" /> This Week
+                     </span>
+                   </>
+                 )}
               </div>
             </div>
           </CardContent>
@@ -122,7 +141,11 @@ export const AnalyticsDashboard = () => {
             </div>
             <div>
               <p className="text-sm font-medium text-slate-500 uppercase tracking-wide">Streak</p>
-              <h3 className="text-2xl font-black text-slate-900">5 Days</h3>
+              {isLoading ? (
+                <Skeleton className="h-8 w-20" />
+              ) : (
+                <h3 className="text-2xl font-black text-slate-900">{streakDays} Days</h3>
+              )}
             </div>
           </CardContent>
         </Card>

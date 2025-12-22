@@ -1,37 +1,39 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { InterviewQuestion, InterviewSession, QuizConfig } from '../types';
-import { mockInterviewQuestions } from '../data/mockInterviewData';
 import { generateId } from '../lib/utils';
 
 interface InterviewStore {
   // Session History
   sessions: InterviewSession[];
-  
+
   // Active Quiz State
+  sessionId: string | null; // API session ID
   activeConfig: QuizConfig | null;
   activeQuestions: InterviewQuestion[];
   currentQuestionIndex: number;
   answers: Record<string, number>; // questionId -> optionIndex
   isQuizActive: boolean;
   startTime: number;
-  
+
   // Actions
-  startQuiz: (config: QuizConfig) => void;
+  setActiveQuiz: (sessionId: string, config: QuizConfig, questions: InterviewQuestion[]) => void;
   answerQuestion: (questionId: string, optionIndex: number) => void;
   nextQuestion: () => void;
   prevQuestion: () => void;
-  submitQuiz: () => string; // returns session ID
+  finishQuiz: () => void; // Mark quiz as finished (results come from API)
   resetQuiz: () => void;
-  
+
   // Computed
   getScore: () => { correct: number; total: number; percentage: number };
+  getAnswersArray: () => { questionId: string; answer: number }[];
 }
 
 export const useInterviewStore = create<InterviewStore>()(
   persist(
     (set, get) => ({
       sessions: [],
+      sessionId: null,
       activeConfig: null,
       activeQuestions: [],
       currentQuestionIndex: 0,
@@ -39,25 +41,11 @@ export const useInterviewStore = create<InterviewStore>()(
       isQuizActive: false,
       startTime: 0,
 
-      startQuiz: (config) => {
-        // Filter questions based on config
-        let filtered = mockInterviewQuestions.filter(q => 
-          config.topics.includes(q.topic)
-        );
-        
-        // Filter by difficulty if not mixed (assuming logic can be expanded)
-        // For simplicity, we include all difficulties if matching topic, 
-        // or we could filter strictly. Let's do a simple shuffle and slice.
-        
-        // Shuffle
-        filtered = filtered.sort(() => 0.5 - Math.random());
-        
-        // Slice to count
-        const selectedQuestions = filtered.slice(0, config.questionCount);
-        
+      setActiveQuiz: (sessionId, config, questions) => {
         set({
+          sessionId,
           activeConfig: config,
-          activeQuestions: selectedQuestions,
+          activeQuestions: questions,
           currentQuestionIndex: 0,
           answers: {},
           isQuizActive: true,
@@ -71,7 +59,7 @@ export const useInterviewStore = create<InterviewStore>()(
 
       nextQuestion: () => set((state) => ({
         currentQuestionIndex: Math.min(
-          state.currentQuestionIndex + 1, 
+          state.currentQuestionIndex + 1,
           state.activeQuestions.length - 1
         )
       })),
@@ -80,40 +68,31 @@ export const useInterviewStore = create<InterviewStore>()(
         currentQuestionIndex: Math.max(0, state.currentQuestionIndex - 1)
       })),
 
-      submitQuiz: () => {
+      finishQuiz: () => {
         const state = get();
         const endTime = Date.now();
         const durationSeconds = Math.floor((endTime - state.startTime) / 1000);
-        
-        let correctCount = 0;
-        state.activeQuestions.forEach(q => {
-          if (state.answers[q.id] === q.correctOptionIndex) {
-            correctCount++;
-          }
-        });
 
-        const score = Math.round((correctCount / state.activeQuestions.length) * 100);
-
+        // Store session locally for history (actual score comes from API)
         const newSession: InterviewSession = {
-          id: generateId(),
+          id: state.sessionId || generateId(),
           date: Date.now(),
           config: state.activeConfig!,
-          score,
+          score: 0, // Will be updated from API response
           totalQuestions: state.activeQuestions.length,
-          correctCount,
+          correctCount: 0, // Will be updated from API response
           durationSeconds,
           answers: state.answers,
         };
 
-        set((state) => ({
-          sessions: [newSession, ...state.sessions],
+        set((prevState) => ({
+          sessions: [newSession, ...prevState.sessions],
           isQuizActive: false
         }));
-
-        return newSession.id;
       },
 
       resetQuiz: () => set({
+        sessionId: null,
         activeConfig: null,
         activeQuestions: [],
         currentQuestionIndex: 0,
@@ -133,10 +112,18 @@ export const useInterviewStore = create<InterviewStore>()(
         return {
           correct,
           total: state.activeQuestions.length,
-          percentage: state.activeQuestions.length > 0 
-            ? Math.round((correct / state.activeQuestions.length) * 100) 
+          percentage: state.activeQuestions.length > 0
+            ? Math.round((correct / state.activeQuestions.length) * 100)
             : 0
         };
+      },
+
+      getAnswersArray: () => {
+        const state = get();
+        return Object.entries(state.answers).map(([questionId, answer]) => ({
+          questionId,
+          answer
+        }));
       }
     }),
     {
