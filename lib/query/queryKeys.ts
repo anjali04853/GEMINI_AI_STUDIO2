@@ -9,7 +9,7 @@ export const queryKeys = {
   assessments: {
     all: ['assessments'] as const,
     lists: () => [...queryKeys.assessments.all, 'list'] as const,
-    list: (filters: Record<string, unknown>) => [...queryKeys.assessments.lists(), filters] as const,
+    list: (filters: object) => [...queryKeys.assessments.lists(), filters] as const,
     details: () => [...queryKeys.assessments.all, 'detail'] as const,
     detail: (id: string) => [...queryKeys.assessments.details(), id] as const,
     session: (sessionId: string) => [...queryKeys.assessments.all, 'session', sessionId] as const,
@@ -19,7 +19,7 @@ export const queryKeys = {
   // Interviews
   interviews: {
     all: ['interviews'] as const,
-    questions: (filters?: Record<string, unknown>) => [...queryKeys.interviews.all, 'questions', filters] as const,
+    questions: (filters?: object) => [...queryKeys.interviews.all, 'questions', filters] as const,
     quiz: {
       session: (sessionId: string) => [...queryKeys.interviews.all, 'quiz', sessionId] as const,
     },
@@ -38,7 +38,7 @@ export const queryKeys = {
   analytics: {
     all: ['analytics'] as const,
     summary: () => [...queryKeys.analytics.all, 'summary'] as const,
-    history: (filters?: Record<string, unknown>) => [...queryKeys.analytics.all, 'history', filters] as const,
+    history: (filters?: object) => [...queryKeys.analytics.all, 'history', filters] as const,
     skills: () => [...queryKeys.analytics.all, 'skills'] as const,
     activity: (days?: number) => [...queryKeys.analytics.all, 'activity', days] as const,
     report: () => [...queryKeys.analytics.all, 'report'] as const,
@@ -49,17 +49,17 @@ export const queryKeys = {
     all: ['admin'] as const,
     datasets: {
       all: () => [...queryKeys.admin.all, 'datasets'] as const,
-      list: (filters?: Record<string, unknown>) => [...queryKeys.admin.datasets.all(), 'list', filters] as const,
+      list: (filters?: object) => [...queryKeys.admin.datasets.all(), 'list', filters] as const,
       detail: (id: string) => [...queryKeys.admin.all, 'datasets', id] as const,
     },
     questions: {
       all: () => [...queryKeys.admin.all, 'questions'] as const,
-      list: (filters?: Record<string, unknown>) => [...queryKeys.admin.questions.all(), 'list', filters] as const,
+      list: (filters?: object) => [...queryKeys.admin.questions.all(), 'list', filters] as const,
       detail: (id: string) => [...queryKeys.admin.all, 'questions', id] as const,
     },
     users: {
       all: () => [...queryKeys.admin.all, 'users'] as const,
-      list: (filters?: Record<string, unknown>) => [...queryKeys.admin.users.all(), 'list', filters] as const,
+      list: (filters?: object) => [...queryKeys.admin.users.all(), 'list', filters] as const,
       detail: (userId: string) => [...queryKeys.admin.all, 'users', userId] as const,
     },
     reports: {
